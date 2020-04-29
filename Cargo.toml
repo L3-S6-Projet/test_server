@@ -1,0 +1,19 @@
+[package]
+name = "dummy_scolendar_api"
+version = "0.1.0"
+authors = ["Nicolas Bourras <dev@nicolasb.fr>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0.106", features = ["derive"] }
+serde_json = "1.0.51"
+warp = "0.2.2"
+tokio = { version = "0.2.19", features = ["macros"] }
+log = "0.4.8"
+fern = { version = "0.6.0", features = ["colored"] }
+chrono = "0.4.11"
+rand = "0.7.3"
+bimap = { version = "0.4.0", features = ["serde"] }
+unidecode = "0.3.0"
