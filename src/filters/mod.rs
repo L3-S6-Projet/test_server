@@ -2,7 +2,7 @@ mod authed;
 mod delayed;
 mod with_db;
 
-pub use authed::{authed, Forbidden, Unauthorized};
+pub use authed::{authed, authed_is_of_kind, Forbidden, PossibleUserKind, Unauthorized};
 pub use delayed::delayed;
 pub use with_db::with_db;
 

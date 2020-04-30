@@ -28,15 +28,41 @@ pub fn routes(db: &Db) -> impl Filter<Extract = impl Reply, Error = Rejection> +
         .and(with_db(db.clone()))
         .and_then(set_delay);
 
+    let swagger_route = warp::path!("swagger.json")
+        .and(warp::get())
+        .and_then(swagger);
+
+    let swagger_ui_route = warp::path!("swagger").and(warp::get()).and_then(swagger_ui);
+
     index_route
         .or(dump_route)
         .or(reset_route)
         .or(delay_route)
         .or(set_delay_route)
+        .or(swagger_route)
+        .or(swagger_ui_route)
 }
 
 async fn index() -> Result<impl warp::Reply, warp::Rejection> {
-    Ok(warp::reply::html(include_str!("../../assets/panel.html")))
+    // TODO: use const fn once replace is stabilized
+    let html =
+        include_str!("../../assets/panel.html").replace("#VERSION", env!("CARGO_PKG_VERSION"));
+
+    Ok(warp::reply::html(html))
+}
+
+async fn swagger() -> Result<impl warp::Reply, warp::Rejection> {
+    Ok(warp::reply::with_header(
+        include_str!("../../assets/swagger.json"),
+        "content-type",
+        "application/json",
+    ))
+}
+
+async fn swagger_ui() -> Result<impl warp::Reply, warp::Rejection> {
+    Ok(warp::reply::html(include_str!(
+        "../../assets/swagger_ui.html"
+    )))
 }
 
 async fn dump(db: Db) -> Result<impl warp::Reply, warp::Rejection> {

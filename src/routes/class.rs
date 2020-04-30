@@ -5,11 +5,16 @@ use super::{
     globals::{PaginatedQueryableListRequest, SimpleSuccessResponse},
     ErrorCode, FailureResponse,
 };
-use crate::db::{models::Classroom, ClassroomUpdate, Database, Db, NewClassroom};
-use crate::filters::{authed_is_of_kind, delayed, with_db, PossibleUserKind};
+use crate::{
+    db::{
+        models::{Class, ClassLevel},
+        ClassUpdate, Database, Db, NewClass,
+    },
+    filters::{authed_is_of_kind, delayed, with_db, PossibleUserKind},
+};
 
 pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let list_route = warp::path!("api" / "classrooms")
+    let list_route = warp::path!("api" / "classes")
         .and(warp::get())
         .and(authed_is_of_kind(
             db,
@@ -21,7 +26,7 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(delayed(db));
 
     // TODO: creation constraint (unique name?)
-    let create_route = warp::path!("api" / "classrooms")
+    let create_route = warp::path!("api" / "classes")
         .and(warp::post())
         .and(authed_is_of_kind(db, &[PossibleUserKind::Administrator]))
         .and(with_db(db.clone()))
@@ -30,7 +35,7 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(delayed(db));
 
     // TODO: deletion constraints
-    let delete_route = warp::path!("api" / "classrooms")
+    let delete_route = warp::path!("api" / "classes")
         .and(warp::delete())
         .and(authed_is_of_kind(db, &[PossibleUserKind::Administrator]))
         .and(with_db(db.clone()))
@@ -38,13 +43,13 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and_then(delete)
         .and(delayed(db));
 
-    let get_route = warp::path!("api" / "classrooms" / u32)
+    let get_route = warp::path!("api" / "classes" / u32)
         .and(warp::get())
         .and(with_db(db.clone()))
         .and_then(get)
         .and(delayed(db));
 
-    let update_route = warp::path!("api" / "classrooms" / u32)
+    let update_route = warp::path!("api" / "classes" / u32)
         .and(warp::put())
         .and(with_db(db.clone()))
         .and(warp::body::content_length_limit(1024 * 16).and(warp::body::json()))
@@ -62,7 +67,7 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
 struct ListResponse<'a> {
     status: &'static str,
     total: usize,
-    classrooms: Vec<&'a Classroom>,
+    classes: Vec<&'a Class>,
 }
 
 async fn list(
@@ -73,22 +78,22 @@ async fn list(
     let db = db.lock().await;
 
     let page = request.normalized_page_number();
-    let (total, classrooms) = db.classroom_list(page, request.query.as_deref());
+    let (total, classes) = db.class_list(page, request.query.as_deref());
 
     Ok(warp::reply::json(&ListResponse {
         status: "success",
         total,
-        classrooms,
+        classes,
     }))
 }
 
 async fn create(
     _username: String,
     db: Db,
-    request: NewClassroom,
+    request: NewClass,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut db = db.lock().await;
-    db.classroom_add(request);
+    db.class_add(request);
     Ok(warp::reply::json(&SimpleSuccessResponse::new()))
 }
 
@@ -99,7 +104,7 @@ async fn delete(
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let mut db = db.lock().await;
 
-    if db.classroom_remove(&request) {
+    if db.class_remove(&request) {
         Ok(warp::reply::with_status(
             warp::reply::json(&SimpleSuccessResponse::new()),
             StatusCode::OK,
@@ -115,18 +120,29 @@ async fn delete(
 #[derive(Serialize)]
 struct GetResponse<'a> {
     status: &'static str,
-    classroom: &'a Classroom,
+    class: GetResponseClass<'a>,
+    total_service: u32, // TODO
+}
+
+#[derive(Serialize)]
+struct GetResponseClass<'a> {
+    name: &'a str,
+    level: &'a ClassLevel,
 }
 
 async fn get(id: u32, db: Db) -> Result<impl warp::Reply, std::convert::Infallible> {
     let db = db.lock().await;
-    let classroom = db.classroom_get(id);
+    let class = db.class_get(id);
 
-    match classroom {
-        Some(classroom) => Ok(warp::reply::with_status(
+    match class {
+        Some(class) => Ok(warp::reply::with_status(
             warp::reply::json(&GetResponse {
                 status: "success",
-                classroom,
+                class: GetResponseClass {
+                    name: &class.name,
+                    level: &class.level,
+                },
+                total_service: 0,
             }),
             StatusCode::OK,
         )),
@@ -140,10 +156,10 @@ async fn get(id: u32, db: Db) -> Result<impl warp::Reply, std::convert::Infallib
 async fn update(
     id: u32,
     db: Db,
-    request: ClassroomUpdate,
+    request: ClassUpdate,
 ) -> Result<impl warp::Reply, std::convert::Infallible> {
     let mut db = db.lock().await;
-    let status = db.classroom_update(id, request);
+    let status = db.class_update(id, request);
 
     if status.found {
         Ok(warp::reply::with_status(

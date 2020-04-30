@@ -55,7 +55,7 @@ async fn post_session(request: LoginRequest, db: Db) -> Result<impl warp::Reply,
                 last_name: &user.last_name,
                 kind: match user.kind {
                     UserKind::Administrator => "administrator",
-                    UserKind::Teacher(_) => "professor",
+                    UserKind::Teacher(_) => "teacher",
                     UserKind::Student(_) => "student",
                 },
             },

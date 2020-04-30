@@ -1,5 +1,5 @@
 use crate::db::Database;
-use crate::db::Db;
+use crate::db::{models::UserKind, Db};
 use crate::filters::with_db;
 
 use warp::{Filter, Rejection};
@@ -9,6 +9,26 @@ pub fn authed(db: &Db) -> impl Filter<Extract = (String,), Error = Rejection> + 
     with_db(db.clone())
         .and(warp::header::optional::<String>("Authorization"))
         .and_then(guard)
+}
+
+#[derive(Eq, PartialEq)]
+pub enum PossibleUserKind {
+    Administrator,
+    Teacher,
+    Student,
+}
+
+/// Filters that checks if the user is of the requested kind, and rejects the request if he/she doesn't
+/// have the authorization ; also checks if the user is authenticated.
+pub fn authed_is_of_kind<'a>(
+    db: &Db,
+    role: &'a [PossibleUserKind],
+) -> impl Filter<Extract = (String,), Error = Rejection> + Clone + 'a {
+    with_db(db.clone())
+        .and(authed(db))
+        .map(move |db, username| (db, username, role))
+        .untuple_one()
+        .and_then(guard_kind)
 }
 
 #[derive(Debug)]
@@ -29,7 +49,7 @@ async fn guard(db: Db, authorization: Option<String>) -> Result<String, warp::Re
 
     let (auth_type, token) = {
         let mut parts = authorization.splitn(2, " ");
-        (parts.next().unwrap(), parts.next().unwrap())
+        (parts.next().unwrap_or(""), parts.next().unwrap_or(""))
     };
 
     if auth_type.to_ascii_lowercase() == "bearer" {
@@ -41,5 +61,28 @@ async fn guard(db: Db, authorization: Option<String>) -> Result<String, warp::Re
         }
     } else {
         Err(warp::reject::custom(Forbidden {}))
+    }
+}
+
+async fn guard_kind(
+    db: Db,
+    username: String,
+    wanted_kind: &[PossibleUserKind],
+) -> Result<String, warp::Rejection> {
+    let db = db.lock().await;
+    let user = db
+        .user_get(&username)
+        .expect("user should be authenticated already");
+
+    let kind = match user.kind {
+        UserKind::Administrator => PossibleUserKind::Administrator,
+        UserKind::Teacher(_) => PossibleUserKind::Teacher,
+        UserKind::Student(_) => PossibleUserKind::Student,
+    };
+
+    if wanted_kind.contains(&kind) {
+        Ok(username)
+    } else {
+        Err(warp::reject::custom(Unauthorized {}))
     }
 }

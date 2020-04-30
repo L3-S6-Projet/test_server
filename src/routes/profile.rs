@@ -34,7 +34,7 @@ async fn put_profile(
     let mut db = db.lock().await;
 
     let mut user = db
-        .users_get(&username)
+        .user_get(&username)
         .expect("checked username should be valid")
         .clone();
 
@@ -77,7 +77,7 @@ async fn put_profile(
     }
 
     if modified {
-        db.users_update(user);
+        db.user_update(user);
     }
 
     // Return a 204 if the content didn't change

@@ -1,6 +1,6 @@
 use super::{
-    models::{Classroom, Rank, StudentInformations, TeacherInformations, UserKind},
-    Database, NewUser,
+    models::{Rank, StudentInformations, TeacherInformations, UserKind},
+    ClassLevel, Database, NewClass, NewClassroom, NewUser,
 };
 use crate::assets::Event;
 use crate::utils::UniqueExt;
@@ -12,10 +12,12 @@ pub fn seed_db<D: Database>(db: &mut D) {
     let users = test_users();
     let classrooms = test_classrooms(&events);
     let teachers = test_teachers(&events);
+    let classes = test_classes();
 
     db.seed(
         users.into_iter().chain(teachers.into_iter()),
         classrooms.into_iter(),
+        classes.into_iter(),
     );
 }
 
@@ -29,13 +31,13 @@ fn test_users() -> Vec<NewUser> {
             kind: UserKind::Administrator,
         },
         NewUser {
-            first_name: "Professor".to_string(),
+            first_name: "Teacher".to_string(),
             last_name: "User".to_string(),
-            username: "professor".to_string(),
-            password: "professor".to_string(),
+            username: "teacher".to_string(),
+            password: "teacher".to_string(),
             kind: UserKind::Teacher(TeacherInformations {
                 phone_number: random_phone_number(rand::thread_rng()),
-                email: "professor@edu.univ-amu.fr".to_string(),
+                email: "teacher@edu.univ-amu.fr".to_string(),
                 rank: Rank::Professor,
             }),
         },
@@ -51,12 +53,12 @@ fn test_users() -> Vec<NewUser> {
     ]
 }
 
-fn test_classrooms(events: &Vec<Event>) -> Vec<Classroom> {
+fn test_classrooms(events: &Vec<Event>) -> Vec<NewClassroom> {
     events
         .iter()
         .map(|event| event.location.as_str())
         .unique()
-        .map(|name| Classroom {
+        .map(|name| NewClassroom {
             name: name.to_string(),
             capacity: 50,
         })
@@ -117,4 +119,11 @@ fn random_phone_number(mut rng: impl Rng) -> String {
             )
         })
         .collect()
+}
+
+fn test_classes() -> Vec<NewClass> {
+    vec![NewClass {
+        name: "L3 Informatique".to_string(),
+        level: ClassLevel::L3,
+    }]
 }

@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 pub struct FailureResponse {
@@ -28,6 +28,7 @@ pub enum ErrorCode {
     InsufficientAuthorization,
     MalformedData,
     InvalidOldPassword,
+    InvalidID,
 }
 
 #[derive(Serialize)]
@@ -38,5 +39,20 @@ pub struct SimpleSuccessResponse {
 impl SimpleSuccessResponse {
     pub fn new() -> Self {
         Self { status: "success" }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct PaginatedQueryableListRequest {
+    pub query: Option<String>,
+    pub page: Option<usize>,
+}
+
+impl PaginatedQueryableListRequest {
+    /// Checks that the page number is valid, and if its not it returns 1
+    pub fn normalized_page_number(&self) -> usize {
+        self.page
+            .map(|v| if v >= 1 { v } else { 1 })
+            .unwrap_or(1usize)
     }
 }

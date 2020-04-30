@@ -1,0 +1,3057 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "v1",
+    "title": "Scolendar",
+    "description": "UE Projet - L3 Informatique AMU 2019-2020\nAll of the routes missing the `role-professor` or `role-student` tags are meant for administrators only - as stated in their descriptions."
+  },
+  "host": "localhost:3030",
+  "basePath": "/api",
+  "tags": [
+    {
+      "name": "auth"
+    },
+    {
+      "name": "profile"
+    },
+    {
+      "name": "teacher"
+    },
+    {
+      "name": "classroom"
+    },
+    {
+      "name": "classes"
+    },
+    {
+      "name": "students"
+    },
+    {
+      "name": "subjects"
+    },
+    {
+      "name": "occupancies"
+    },
+    {
+      "name": "role-professor"
+    },
+    {
+      "name": "role-student"
+    }
+  ],
+  "schemes": [
+    "http"
+  ],
+  "paths": {
+    "/session": {
+      "post": {
+        "tags": [
+          "auth",
+          "role-student",
+          "role-professor"
+        ],
+        "summary": "Logins the user to the application, returning a new auth token and the user role.",
+        "operationId": "login",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "LoginRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LoginRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Valid credentials",
+            "schema": {
+              "$ref": "#/definitions/SuccessfulLoginResponse"
+            }
+          },
+          "403": {
+            "description": "Invalid credentials",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "auth",
+          "role-student",
+          "role-professor"
+        ],
+        "summary": "Destroys the given auth token.",
+        "operationId": "logout",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "LogoutRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/LogoutRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Valid token",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "403": {
+            "description": "Invalid token",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/profile": {
+      "put": {
+        "tags": [
+          "profile",
+          "role-student",
+          "role-professor"
+        ],
+        "summary": "Updates the user model.",
+        "description": "Note : **only** users with the role `administrator` should be able to specifiy the properties `first_name` and `last_name`.\nOnly filled fields should be updated.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "ProfileUpdateRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ProfileUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data updated",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/profile/last-occupancies-modifications": {
+      "get": {
+        "tags": [
+          "role-student",
+          "role-professor"
+        ],
+        "summary": "Returns a list of all recent occupancies modifications that are relevant to the user.",
+        "description": "Modifications that are relevant are:\n- For a teacher: modifications of occupancies about a subject that they teach, or modifications of their own external occupancies.\n- For a student : modifications of occupancies about a subject that they take.\nOnly the last 25 modifications should be returned.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent modifications",
+            "schema": {
+              "$ref": "#/definitions/ProfileRecentModifications"
+            }
+          }
+        }
+      }
+    },
+    "/teachers": {
+      "get": {
+        "tags": [
+          "teacher"
+        ],
+        "summary": "Returns a paginated list of all teachers.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 teachers should be returned per page. At least three characters should be provided for the search.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "Query",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "Page",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of all teachers.",
+            "schema": {
+              "$ref": "#/definitions/TeacherListResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "teacher"
+        ],
+        "summary": "Creates a new teacher.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "TeacherCreationRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TeacherCreationRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teacher created.",
+            "schema": {
+              "$ref": "#/definitions/AccountCreatedResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "teacher"
+        ],
+        "summary": "Deletes the given teachers using their IDs.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nThis request should be denied if the professors are in charge of any subjects. This should cascade and delete any occupancies they are a part of, and remove them from any subjects they took part in.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "IDRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/IDRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data deleted.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID(s)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/teachers/{id}": {
+      "get": {
+        "tags": [
+          "teacher"
+        ],
+        "summary": "Gets information for a teacher",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Teacher ID",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teacher information",
+            "schema": {
+              "$ref": "#/definitions/TeacherResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID(s)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "teacher"
+        ],
+        "summary": "Updates information for a teacher.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nOnly filled fields should be updated.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Teacher ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "TeacherUpdateRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TeacherUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teacher updated",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/teachers/{id}/occupancies": {
+      "get": {
+        "tags": [
+          "teacher",
+          "role-professor"
+        ],
+        "summary": "Gets the occupancies of a teacher for the given time period.",
+        "description": "Note : only users with the role `administrator`, or teachers whose id match the one in the URL should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Teacher ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "OccupanciesRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OccupanciesRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teacher occupancies",
+            "schema": {
+              "$ref": "#/definitions/Occupancies"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/teachers/{id}/subjects": {
+      "get": {
+        "tags": [
+          "teacher",
+          "role-professor"
+        ],
+        "summary": "Gets the list of all subjects that a teacher participates in.",
+        "description": "Note : only teachers whose id match the one in the URL should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Teacher ID",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teacher subjects",
+            "schema": {
+              "$ref": "#/definitions/TeacherSubjects"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/classrooms": {
+      "get": {
+        "tags": [
+          "classroom",
+          "role-professor"
+        ],
+        "summary": "Returns a paginated list of all classrooms.",
+        "description": "Note : only users with the role `administrator`, or professors, should be able to access this route.\n10 classrooms should be returned per page. At least three characters should be provided for the search.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "Query",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "Page",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of all classrooms.",
+            "schema": {
+              "$ref": "#/definitions/ClassroomsList"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "classroom"
+        ],
+        "summary": "Creates a new classroom.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "ClassroomCreationRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ClassroomCreationRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Classroom created.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "classroom"
+        ],
+        "summary": "Deletes the given classrooms using their IDs.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nThis request should be denied if the classroom is used in any occupancy.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "IDRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/IDRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data deleted.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID(s)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/classrooms/{id}": {
+      "get": {
+        "tags": [
+          "classroom"
+        ],
+        "summary": "Gets information for a classroom.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Classroom ID",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Classroom information",
+            "schema": {
+              "$ref": "#/definitions/ClassroomGetResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID(s)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "classroom"
+        ],
+        "summary": "Updates information for a classroom.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nThe omission of the `capacity` field is not an error : it should not be able to be modified.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Classroom ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "ClassroomUpdateRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ClassroomUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Classroom updated",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/classrooms/{id}/occupancies": {
+      "get": {
+        "tags": [
+          "classroom"
+        ],
+        "summary": "Gets the occupancies of a classroom for the given time period.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Classroom ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "OccupanciesRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OccupanciesRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Classroom occupancies",
+            "schema": {
+              "$ref": "#/definitions/Occupancies"
+            }
+          },
+          "404": {
+            "description": "Classroom ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/classes": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Returns a paginated list of all classes.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 classes should be returned per page. At least three characters should be provided for the search.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "Query",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "Page",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of all classes.",
+            "schema": {
+              "$ref": "#/definitions/ClassesList"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Creates a new class.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "ClassCreationRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Class"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Class created.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Deletes the given classes using their IDs.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nThis request should be denied if the class is used in any subject, or if any student is in this class.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "IDRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/IDRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data deleted.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID(s)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/classes/{id}": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Gets information for a class.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Class ID",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Class information",
+            "schema": {
+              "$ref": "#/definitions/ClassResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID(s)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Updates information for a class.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Class ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "ClassUpdateRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Class"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Class updated",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/classes/{id}/occupancies": {
+      "get": {
+        "tags": [
+          "classes"
+        ],
+        "summary": "Gets the occupancies of a class for the given time period.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Class ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "OccupanciesRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OccupanciesRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Class occupancies",
+            "schema": {
+              "$ref": "#/definitions/Occupancies"
+            }
+          },
+          "404": {
+            "description": "Class ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/students": {
+      "get": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Returns a paginated list of all students.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 students should be returned per page. At least three characters should be provided for the search.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "Query",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "Page",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of all students.",
+            "schema": {
+              "$ref": "#/definitions/StudentListResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Creates a new student.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "StudentCreationRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StudentCreationRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Student created.",
+            "schema": {
+              "$ref": "#/definitions/AccountCreatedResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Deletes the given teachers using their IDs.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nThis request should trigger the re-organization of students in the affected groups.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "IDRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/IDRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data deleted.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID(s)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/students/{id}": {
+      "get": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Gets information for a student",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Student ID",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Student information",
+            "schema": {
+              "$ref": "#/definitions/StudentResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID(s)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "students"
+        ],
+        "summary": "Updates information for a student.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nOnly filled fields should be updated.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Student ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "StudentUpdateRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StudentUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Student updated",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/students/{id}/occupancies": {
+      "get": {
+        "tags": [
+          "students",
+          "role-student"
+        ],
+        "summary": "Gets the occupancies of a student for the given time period.",
+        "description": "Note : only users with the role `administrator`, or students whose id match the one in the URL should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Student ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "OccupanciesRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OccupanciesRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Student occupancies",
+            "schema": {
+              "$ref": "#/definitions/Occupancies"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/students/{id}/subjects": {
+      "get": {
+        "tags": [
+          "students",
+          "role-student"
+        ],
+        "summary": "Gets the list of all subjects that a student participates in.",
+        "description": "Note : only students whose id match the one in the URL should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Student ID",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Student subjects",
+            "schema": {
+              "$ref": "#/definitions/StudentSubjects"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subjects": {
+      "get": {
+        "tags": [
+          "subjects"
+        ],
+        "summary": "Returns a paginated list of all subjects.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 subjects should be returned per page. At least three characters should be provided for the search.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "Query",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "query",
+            "name": "Page",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of all subjects.",
+            "schema": {
+              "$ref": "#/definitions/SubjectListResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "subjects"
+        ],
+        "summary": "Creates a new subject.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "SubjectCreationRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Subject"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subject created.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "subjects"
+        ],
+        "summary": "Deletes the given subjects using their IDs.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nThis request should be denied if the subject is used in any occupancy (be it directly, or via a group).",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "IDRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/IDRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data deleted.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID(s)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subjects/{id}": {
+      "get": {
+        "tags": [
+          "subjects"
+        ],
+        "summary": "Gets information on a subject",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Subject ID",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subject information",
+            "schema": {
+              "$ref": "#/definitions/SubjectResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID(s)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "subjects"
+        ],
+        "summary": "Updates information for a subject.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Subject ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "SubjectUpdateRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Subject"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subject updated",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subjects/{id}/occupancies": {
+      "get": {
+        "tags": [
+          "subjects",
+          "role-professor"
+        ],
+        "summary": "Gets the occupancies of a subject for the given time period.",
+        "description": "Note : only users with the role `administrator`, or professors who are a teacher of the subject should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Subject ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "OccupanciesRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OccupanciesRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subject occupancies",
+            "schema": {
+              "$ref": "#/definitions/Occupancies"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "role-professor"
+        ],
+        "summary": "Creates a new occupancy for a given subject.",
+        "description": "Note : only professors who are a teacher of the subject should be able to access this route.\nThe occupancy types `td` and `tp` should be rejected. Only classrooms that are free should be accepted. Only classes that are not (any of their groups too) in any classes at the specified time should be accepted.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Subject ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "OccupanciesCreationRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OccupanciesCreationRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data saved",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subjects/{id}/teachers": {
+      "post": {
+        "tags": [
+          "subjects"
+        ],
+        "summary": "Adds new teachers to a subject using their IDs.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Subject ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "IDRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/IDRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teachers added.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "subjects"
+        ],
+        "summary": "Removes teachers from a subject using their IDs.",
+        "description": "Note : only users with the role `administrator` should be able to access this route. This request should be denied if there is less than one teacher in the subject, or if the teacher is in charge.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Subject ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "IDRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/IDRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teachers removed.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subjects/{id}/groups": {
+      "post": {
+        "tags": [
+          "subjects"
+        ],
+        "summary": "Adds a new group to a subject.",
+        "description": "Note : only users with the role `administrator` should be able to access this route. This should trigger the re-organization of groups.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Subject ID",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group added.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "subjects"
+        ],
+        "summary": "Removes groups from a subject using their IDs.",
+        "description": "Note : only users with the role `administrator` should be able to access this route. This should trigger the re-organisation of groups. This request should be denied if there is less than one group in the subject.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Subject ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "IDRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/IDRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Groups removed.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/subjects/{id}/groups/{group_id}/occupancies": {
+      "get": {
+        "tags": [
+          "role-professor"
+        ],
+        "summary": "Gets the occupancies of a subject for the given time period.",
+        "description": "Note : only professors who are a teacher of the subject should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Subject ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "path",
+            "name": "group_id",
+            "description": "Group ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "OccupanciesRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OccupanciesRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group occupancies",
+            "schema": {
+              "$ref": "#/definitions/Occupancies"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "role-professor"
+        ],
+        "summary": "Creates a new occupancy for a given group of a subject.",
+        "description": "Note : only professors who are a teacher of the subject should be able to access this route.\nThe only accepted occupancy types should be `td` and `tp`.\nThe classroom id should **NOT** be nullable. Only classrooms that are free should be accepted. Only groups that are not (and their class too) in any classes at the specified time should be accepted.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Subject ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "path",
+            "name": "group_id",
+            "description": "Group ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "OccupanciesCreationRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OccupanciesCreationRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data saved",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/occupancies": {
+      "get": {
+        "tags": [
+          "occupancies"
+        ],
+        "summary": "Gets all the occupancies for the given time period.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "OccupanciesRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OccupanciesRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subject occupancies",
+            "schema": {
+              "$ref": "#/definitions/Occupancies"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/occupancies/{id}": {
+      "put": {
+        "tags": [
+          "role-professor"
+        ],
+        "summary": "Update an occupancy for a given subject.",
+        "description": "Note : only professors who are a teacher of the subject should be able to access this route.\nOnly classrooms that are free should be accepted. Only classes that are not (any of their groups too) in any classes at the specified time should be accepted. Only filled fields should be updated.You can't change the assigned group, or the assigned type, or the assigned subject, or the assigned teacher.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Occupancy ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "OccupanciesUpdateRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OccupanciesUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Data saved",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Invalid data",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "role-professor"
+        ],
+        "summary": "Removes occupancies from a subject using their IDs.",
+        "description": "Note : only professors who are a teacher of the subject should be able to access this route.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "Occupancy ID",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "IDRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/IDRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Occupancies removed.",
+            "schema": {
+              "$ref": "#/definitions/SimpleSuccessResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "token": {
+      "in": "header",
+      "name": "Authorization",
+      "type": "apiKey"
+    }
+  },
+  "definitions": {
+    "Rank": {
+      "type": "string",
+      "enum": [
+        "lecturer",
+        "professor",
+        "prag",
+        "ater",
+        "monitor"
+      ]
+    },
+    "Role": {
+      "type": "string",
+      "enum": [
+        "administrator",
+        "teacher",
+        "student"
+      ]
+    },
+    "OccupancyType": {
+      "type": "string",
+      "enum": [
+        "cm",
+        "td",
+        "tp",
+        "projet",
+        "administration",
+        "external"
+      ]
+    },
+    "Level": {
+      "type": "string",
+      "enum": [
+        "L1",
+        "L2",
+        "L3",
+        "M1",
+        "M2"
+      ]
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "required": [
+        "status",
+        "code"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "error"
+        },
+        "code": {
+          "type": "string",
+          "enum": [
+            "InvalidCredentials",
+            "InsufficientAuthorization",
+            "MalformedData",
+            "InvalidOldPassword"
+          ]
+        }
+      }
+    },
+    "SimpleSuccessResponse": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        }
+      }
+    },
+    "IDRequest": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "example": 0
+      }
+    },
+    "Occupancies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "classroom",
+          "group_name",
+          "subject_name",
+          "teacher_name",
+          "start",
+          "end",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 0
+          },
+          "classroom_name": {
+            "type": "string",
+            "example": "B.001"
+          },
+          "group_name": {
+            "type": "string",
+            "example": "Groupe 1"
+          },
+          "subject_name": {
+            "type": "string",
+            "example": "Algorithmique"
+          },
+          "teacher_name": {
+            "type": "string",
+            "example": "mylan chevalier"
+          },
+          "start": {
+            "type": "integer",
+            "example": 1587776227
+          },
+          "end": {
+            "type": "integer",
+            "example": 1587779827
+          },
+          "type": {
+            "$ref": "#/definitions/OccupancyType"
+          },
+          "class_name": {
+            "type": "string",
+            "example": "L3 Informatique"
+          }
+        }
+      }
+    },
+    "OccupanciesRequest": {
+      "type": "object",
+      "required": [
+        "type",
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "type": "integer",
+          "example": 1587776227
+        },
+        "end": {
+          "type": "integer",
+          "example": 1587779827
+        }
+      }
+    },
+    "AccountCreatedResponse": {
+      "type": "object",
+      "required": [
+        "status",
+        "username",
+        "password"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "username": {
+          "type": "string",
+          "example": "azure_diamong"
+        },
+        "password": {
+          "type": "string",
+          "example": "n5l*2#01@"
+        }
+      }
+    },
+    "LoginRequest": {
+      "type": "object",
+      "required": [
+        "username",
+        "password"
+      ],
+      "properties": {
+        "username": {
+          "type": "string",
+          "example": "azure_diamond"
+        },
+        "password": {
+          "type": "string",
+          "example": "hunter2"
+        }
+      }
+    },
+    "SuccessfulLoginResponse": {
+      "type": "object",
+      "required": [
+        "status",
+        "token"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "token": {
+          "type": "string",
+          "example": "...."
+        },
+        "user": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "example": 0
+            },
+            "first_name": {
+              "type": "string"
+            },
+            "last_name": {
+              "type": "string"
+            },
+            "kind": {
+              "$ref": "#/definitions/Role"
+            }
+          }
+        }
+      }
+    },
+    "LogoutRequest": {
+      "type": "object",
+      "required": [
+        "token"
+      ],
+      "properties": {
+        "token": {
+          "type": "string",
+          "example": "..."
+        }
+      }
+    },
+    "ProfileUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "old_password": {
+          "type": "string",
+          "example": "12345"
+        },
+        "password": {
+          "type": "string",
+          "example": "54321"
+        },
+        "first_name": {
+          "type": "string",
+          "example": "new first name"
+        },
+        "last_name": {
+          "type": "string",
+          "example": "new last name"
+        }
+      }
+    },
+    "ProfileRecentModifications": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "modifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "modification_type": {
+                "type": "string",
+                "enum": [
+                  "creation",
+                  "edition",
+                  "deletion"
+                ]
+              },
+              "modification_timestamp": {
+                "type": "integer",
+                "example": 1587987080
+              },
+              "occupancy": {
+                "type": "object",
+                "properties": {
+                  "subject_name": {
+                    "type": "string",
+                    "example": "PPPE (nullable if external)"
+                  },
+                  "class_name": {
+                    "type": "string",
+                    "example": "L3 Informatique (nullable if external)"
+                  },
+                  "occupancy_type": {
+                    "$ref": "#/definitions/OccupancyType"
+                  },
+                  "occupancy_start": {
+                    "type": "integer",
+                    "example": 1587987080
+                  },
+                  "occupancy_end": {
+                    "type": "integer",
+                    "example": 1587987080
+                  },
+                  "previous_occupancy_start": {
+                    "description": "Only for the edition modification_type",
+                    "type": "integer",
+                    "example": 1587987080
+                  },
+                  "previous_occupancy_end": {
+                    "description": "Only for the edition modification_type",
+                    "type": "integer",
+                    "example": 1587987080
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "TeacherListResponse": {
+      "type": "object",
+      "required": [
+        "status",
+        "total",
+        "teachers"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "total": {
+          "type": "integer",
+          "example": 100,
+          "description": "Total number of teachers."
+        },
+        "teachers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "first_name",
+              "last_name",
+              "email",
+              "phone_number"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 0
+              },
+              "first_name": {
+                "type": "string",
+                "example": "mylan"
+              },
+              "last_name": {
+                "type": "string",
+                "example": "chevalier"
+              },
+              "email": {
+                "type": "string",
+                "example": "nathan.roberts@example.com"
+              },
+              "phone_number": {
+                "type": "string",
+                "example": "06 71 55 50 11"
+              }
+            }
+          }
+        }
+      }
+    },
+    "TeacherCreationRequest": {
+      "type": "object",
+      "required": [
+        "first_name",
+        "last_name"
+      ],
+      "properties": {
+        "first_name": {
+          "type": "string",
+          "example": "mylan"
+        },
+        "last_name": {
+          "type": "string",
+          "example": "chevalier"
+        },
+        "email": {
+          "type": "string",
+          "example": "nathan.roberts@example.com"
+        },
+        "phone_number": {
+          "type": "string",
+          "example": "06 71 55 50 11"
+        },
+        "rank": {
+          "$ref": "#/definitions/Rank"
+        }
+      }
+    },
+    "TeacherResponse": {
+      "type": "object",
+      "required": [
+        "first_name",
+        "last_name",
+        "username",
+        "email",
+        "phone_number",
+        "rank",
+        "total_service",
+        "services"
+      ],
+      "properties": {
+        "first_name": {
+          "type": "string",
+          "example": "Mylan"
+        },
+        "last_name": {
+          "type": "string",
+          "example": "Chevalier"
+        },
+        "username": {
+          "type": "string",
+          "example": "road.buddy"
+        },
+        "email": {
+          "type": "string",
+          "example": "road.buddy@etu.univ-ac.edu"
+        },
+        "phone_number": {
+          "type": "string",
+          "example": "06 71 55 50 11"
+        },
+        "rank": {
+          "$ref": "#/definitions/Rank"
+        },
+        "total_service": {
+          "type": "integer",
+          "example": "58"
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "class",
+              "cm",
+              "project",
+              "td",
+              "tp",
+              "administration",
+              "external"
+            ],
+            "properties": {
+              "class": {
+                "type": "string",
+                "example": "L1 Informatique"
+              },
+              "cm": {
+                "type": "integer",
+                "example": 12
+              },
+              "project": {
+                "type": "integer",
+                "example": "0"
+              },
+              "td": {
+                "type": "integer",
+                "example": "6"
+              },
+              "tp": {
+                "type": "integer",
+                "example": "6"
+              },
+              "administration": {
+                "type": "integer",
+                "example": 5
+              },
+              "external": {
+                "type": "integer",
+                "example": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "TeacherUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "first_name": {
+          "type": "string",
+          "example": "mylan"
+        },
+        "last_name": {
+          "type": "string",
+          "example": "chevalier"
+        },
+        "email": {
+          "type": "string",
+          "example": "road.buddy@etu.univ-ac.edu"
+        },
+        "phone_number": {
+          "type": "string",
+          "example": "06 71 55 50 11"
+        },
+        "rank": {
+          "$ref": "#/definitions/Rank"
+        },
+        "password": {
+          "type": "string",
+          "example": "newpassword"
+        }
+      }
+    },
+    "TeacherSubjects": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 0
+              },
+              "name": {
+                "type": "string",
+                "example": "PPPE"
+              },
+              "class_name": {
+                "type": "string",
+                "example": "L3 Informatique"
+              },
+              "teachers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "first_name": {
+                      "type": "string",
+                      "example": "Butch"
+                    },
+                    "last_name": {
+                      "type": "string",
+                      "example": "Cranky"
+                    },
+                    "in_charge": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "email": {
+                      "type": "string",
+                      "example": "butch.cranky@nook.mail"
+                    },
+                    "phone_number": {
+                      "type": "string",
+                      "example": "06 71 55 50 11"
+                    }
+                  }
+                }
+              },
+              "groups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "Groupe 1"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "example": 22
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "ClassroomsList": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "total": {
+          "type": "integer",
+          "example": 100
+        },
+        "classrooms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Classroom"
+          }
+        }
+      }
+    },
+    "Classroom": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "capacity"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "example": 0
+        },
+        "name": {
+          "type": "string",
+          "example": "B.001"
+        },
+        "capacity": {
+          "type": "integer",
+          "example": 50
+        }
+      }
+    },
+    "ClassroomCreationRequest": {
+      "type": "object",
+      "required": [
+        "name",
+        "capacity"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "B.001"
+        },
+        "capacity": {
+          "type": "integer",
+          "example": 50
+        }
+      }
+    },
+    "ClassroomGetResponse": {
+      "type": "object",
+      "required": [
+        "status",
+        "classroom"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "classroom": {
+          "$ref": "#/definitions/Classroom"
+        }
+      }
+    },
+    "ClassroomUpdateRequest": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "B.001"
+        }
+      }
+    },
+    "ClassesList": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "total": {
+          "type": "integer",
+          "example": 0
+        },
+        "classes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ClassWithId"
+          }
+        }
+      }
+    },
+    "ClassWithId": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "example": 0
+        },
+        "name": {
+          "type": "string",
+          "example": "L3 Informatique"
+        },
+        "level": {
+          "$ref": "#/definitions/Level"
+        }
+      }
+    },
+    "Class": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "L3 Informatique"
+        },
+        "level": {
+          "$ref": "#/definitions/Level"
+        }
+      }
+    },
+    "ClassResponse": {
+      "type": "object",
+      "properties": {
+        "class": {
+          "$ref": "#/definitions/Class"
+        },
+        "total_service": {
+          "type": "integer",
+          "example": 56
+        }
+      }
+    },
+    "StudentListResponse": {
+      "type": "object",
+      "required": [
+        "status",
+        "total",
+        "students"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "total": {
+          "type": "integer",
+          "example": 100,
+          "description": "Total number of students."
+        },
+        "students": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "first_name",
+              "last_name",
+              "class_name"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 0
+              },
+              "first_name": {
+                "type": "string",
+                "example": "Fabien"
+              },
+              "last_name": {
+                "type": "string",
+                "example": "Vidal"
+              },
+              "class_name": {
+                "type": "string",
+                "example": "L3 Informatique"
+              }
+            }
+          }
+        }
+      }
+    },
+    "StudentCreationRequest": {
+      "type": "object",
+      "required": [
+        "first_name",
+        "last_name",
+        "class_id"
+      ],
+      "properties": {
+        "first_name": {
+          "type": "string",
+          "example": "fabien"
+        },
+        "last_name": {
+          "type": "string",
+          "example": "Vidal"
+        },
+        "class_id": {
+          "type": "integer",
+          "example": 0
+        }
+      }
+    },
+    "StudentResponse": {
+      "type": "object",
+      "required": [
+        "first_name",
+        "last_name",
+        "username",
+        "total_hours",
+        "subjects"
+      ],
+      "properties": {
+        "first_name": {
+          "type": "string",
+          "example": "Fabien"
+        },
+        "last_name": {
+          "type": "string",
+          "example": "Vidal"
+        },
+        "username": {
+          "type": "string",
+          "example": "road.buddy"
+        },
+        "total_hours": {
+          "type": "integer",
+          "example": "58"
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "group"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "example": "Anglais"
+              },
+              "group": {
+                "type": "string",
+                "example": "Groupe 1"
+              }
+            }
+          }
+        }
+      }
+    },
+    "StudentUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "first_name": {
+          "type": "string",
+          "example": "mylan"
+        },
+        "last_name": {
+          "type": "string",
+          "example": "chevalier"
+        },
+        "class_id": {
+          "type": "integer",
+          "example": 0
+        },
+        "password": {
+          "type": "string",
+          "example": "newpassword"
+        }
+      }
+    },
+    "StudentSubjects": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "total": {
+          "type": "integer",
+          "example": 0
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "example": "PPPE"
+              },
+              "class_name": {
+                "type": "string",
+                "example": "L3 Informatique"
+              },
+              "teachers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "first_name": {
+                      "type": "string",
+                      "example": "Butch"
+                    },
+                    "last_name": {
+                      "type": "string",
+                      "example": "Cranky"
+                    },
+                    "in_charge": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "email": {
+                      "type": "string",
+                      "example": "butch.cranky@nook.mail"
+                    },
+                    "phone_number": {
+                      "type": "string",
+                      "example": "06 71 55 50 11"
+                    }
+                  }
+                }
+              },
+              "groups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "example": "Groupe 1"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "example": 22
+                    },
+                    "is_student_group": {
+                      "type": "boolean",
+                      "example": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "SubjectListResponse": {
+      "type": "object",
+      "required": [
+        "status",
+        "total",
+        "subjects"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "total": {
+          "type": "integer",
+          "example": 100,
+          "description": "Total number of students."
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "class_name",
+              "name"
+            ],
+            "properties": {
+              "class_name": {
+                "type": "string",
+                "example": "L3 Informatique"
+              },
+              "name": {
+                "type": "string",
+                "example": "PPPE"
+              }
+            }
+          }
+        }
+      }
+    },
+    "Subject": {
+      "type": "object",
+      "required": [
+        "name",
+        "class_id",
+        "teacher_in_charge_id"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "L1 Informatique"
+        },
+        "class_id": {
+          "type": "integer",
+          "example": 0
+        },
+        "teacher_in_charge_id": {
+          "type": "integer",
+          "example": 0
+        }
+      }
+    },
+    "SubjectResponse": {
+      "type": "object",
+      "required": [
+        "name",
+        "class_name",
+        "total_hours"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "PPPE"
+        },
+        "class_name": {
+          "type": "string",
+          "example": "L3 Informatique"
+        },
+        "total_hours": {
+          "type": "integer",
+          "example": 50
+        },
+        "teachers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 0
+              },
+              "first_name": {
+                "type": "string",
+                "example": "Mylan"
+              },
+              "last_name": {
+                "type": "string",
+                "example": "Chevalier"
+              }
+            }
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "example": 0
+              },
+              "name": {
+                "type": "string",
+                "example": "Groupe 1"
+              },
+              "count": {
+                "type": "integer",
+                "example": 22
+              }
+            }
+          }
+        }
+      }
+    },
+    "OccupanciesCreationRequest": {
+      "type": "object",
+      "properties": {
+        "classroom_id": {
+          "type": "string",
+          "example": "nullable"
+        },
+        "start": {
+          "type": "integer",
+          "example": 1587776227
+        },
+        "end": {
+          "type": "integer",
+          "example": 1587779827
+        },
+        "type": {
+          "$ref": "#/definitions/OccupancyType"
+        }
+      }
+    },
+    "OccupanciesUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "classroom_id": {
+          "type": "string",
+          "example": "nullable"
+        },
+        "start": {
+          "type": "integer",
+          "example": 1587776227
+        },
+        "end": {
+          "type": "integer",
+          "example": 1587779827
+        }
+      }
+    }
+  }
+}

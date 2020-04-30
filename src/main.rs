@@ -21,15 +21,15 @@ async fn main() {
     let cors = warp::cors()
         .allow_any_origin()
         .allow_methods(vec!["GET", "POST", "PUT", "DELETE"])
-        .allow_headers(vec!["content-type", "Authorization"]);
+        .allow_headers(vec!["content-type", "authorization"]);
 
     let filters = filters
-        .with(cors)
         // Before logging for correct status codes
         .recover(handle_rejection)
-        .with(warp::log("dummy"));
+        .with(warp::log("dummy"))
+        .with(cors);
 
-    warp::serve(filters).run(([127, 0, 0, 1], 3030)).await;
+    warp::serve(filters).run(([0, 0, 0, 0], 3030)).await;
 }
 
 fn setup_logging() {

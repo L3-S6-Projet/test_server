@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
@@ -6,7 +7,9 @@ pub mod models;
 mod seed;
 
 use json::JSONDatabase;
-use models::{Classroom, User, UserKind};
+use models::{Class, ClassLevel, Classroom, User, UserKind};
+
+pub const PAGE_SIZE: usize = 10;
 
 pub type Db = Arc<Mutex<JSONDatabase>>;
 
@@ -20,7 +23,8 @@ pub trait Database {
     fn seed(
         &mut self,
         users: impl Iterator<Item = NewUser>,
-        classrooms: impl Iterator<Item = Classroom>,
+        classrooms: impl Iterator<Item = NewClassroom>,
+        classes: impl Iterator<Item = NewClass>,
     );
     fn dump_as_json(&self) -> Result<String, serde_json::Error>;
 
@@ -31,13 +35,21 @@ pub trait Database {
     fn auth_logout(&mut self, token: &str) -> bool;
     fn auth_get_user<'a, 'b>(&'a self, token: &str) -> Option<&'a User>;
 
-    fn classroom_list(&self) -> Vec<&Classroom>;
+    fn classroom_list(&self, page: usize, query: Option<&str>) -> (usize, Vec<&Classroom>);
     fn classroom_get(&self, id: u32) -> Option<&Classroom>;
-    fn classroom_add(&mut self, classroom: Classroom);
+    fn classroom_add(&mut self, classroom: NewClassroom);
+    fn classroom_remove(&mut self, classrooms: &[u32]) -> bool;
+    fn classroom_update(&mut self, id: u32, update: ClassroomUpdate) -> UpdateStatus;
 
-    fn users_add(&mut self, user: NewUser);
-    fn users_get(&self, username: &str) -> Option<&User>;
-    fn users_update(&mut self, user: User);
+    fn user_add(&mut self, user: NewUser);
+    fn user_get(&self, username: &str) -> Option<&User>;
+    fn user_update(&mut self, user: User);
+
+    fn class_list(&self, page: usize, query: Option<&str>) -> (usize, Vec<&Class>);
+    fn class_add(&mut self, class: NewClass);
+    fn class_remove(&mut self, classes: &[u32]) -> bool;
+    fn class_get(&self, id: u32) -> Option<&Class>;
+    fn class_update(&mut self, id: u32, update: ClassUpdate) -> UpdateStatus;
 }
 
 pub struct NewUser {
@@ -46,4 +58,33 @@ pub struct NewUser {
     pub username: String,
     pub password: String,
     pub kind: UserKind,
+}
+
+#[derive(Deserialize)]
+pub struct NewClassroom {
+    pub name: String,
+    pub capacity: u16,
+}
+
+#[derive(Deserialize)]
+pub struct ClassroomUpdate {
+    pub name: Option<String>,
+    pub capacity: u16,
+}
+
+pub struct UpdateStatus {
+    pub found: bool,
+    pub updated: bool,
+}
+
+#[derive(Deserialize)]
+pub struct NewClass {
+    pub name: String,
+    pub level: ClassLevel,
+}
+
+#[derive(Deserialize)]
+pub struct ClassUpdate {
+    pub name: Option<String>,
+    pub level: Option<ClassLevel>,
 }

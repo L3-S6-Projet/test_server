@@ -5,7 +5,7 @@ BASE_URL = 'http://127.0.0.1:3030/api/'
 
 # Tests assume the following account are created, and will be re-created as-is with a POST to /api/reset:
 # {'first_name': 'Admin', 'last_name': 'User', 'username': 'admin', 'password': 'admin'}
-# {'first_name': 'Professor', 'last_name': 'User', 'username': 'professor', 'password': 'professor'}
+# {'first_name': 'Teacher', 'last_name': 'User', 'username': 'teacher', 'password': 'teacher'}
 # {'first_name': 'Student', 'last_name': 'User', 'username': 'student', 'password': 'student'}
 
 # Tests are not safe to run in parallel - they might manipulate the same accounts at the same time.
@@ -74,10 +74,10 @@ class TestSessionRoutes(unittest.TestCase):
             'kind': 'administrator',
         }
 
-        user_schema_professor = {
-            'first_name': 'Professor',
+        user_schema_teacher = {
+            'first_name': 'Teacher',
             'last_name': 'User',
-            'kind': 'professor',
+            'kind': 'teacher',
         }
 
         user_schema_student = {
@@ -88,7 +88,7 @@ class TestSessionRoutes(unittest.TestCase):
 
         parameters = (
             ('admin', user_schema_admin),
-            ('professor', user_schema_professor),
+            ('teacher', user_schema_teacher),
             ('student', user_schema_student)
         )
 
@@ -149,7 +149,7 @@ class TestProfileRoutes(unittest.TestCase):
 
     def test_put_profile_first_name_last_name_without_admin(self):
         for prop in ('first_name', 'last_name'):
-            for username in ('professor', 'student'):
+            for username in ('teacher', 'student'):
                 with self.subTest(msg='Checks that the property cant be edited', prop=prop, username=username):
                     token = get_token(username)
 
@@ -194,7 +194,7 @@ class TestProfileRoutes(unittest.TestCase):
         validate_error_response(res.json(), 'InvalidOldPassword')
 
     def test_put_profile_can_change_password(self):
-        for account in ('admin', 'professor', 'student'):
+        for account in ('admin', 'teacher', 'student'):
             with self.subTest(msg='Checks that the user can change their password', account=account):
                 token = get_token(account)
                 res = requests.put(BASE_URL + 'profile', headers={
