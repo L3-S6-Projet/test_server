@@ -14,7 +14,7 @@ pub struct Event {
 
 impl Event {
     pub fn from_parsed_ical() -> Vec<Self> {
-        let source = include_str!("../assets/cal.json");
+        let source = include_str!("../../assets/cal.json");
         serde_json::from_str(source).unwrap()
     }
 }
@@ -27,7 +27,7 @@ pub struct StudentName {
 
 impl StudentName {
     pub fn from_parsed_json() -> Vec<Self> {
-        let source = include_str!("../assets/students.json");
+        let source = include_str!("../../assets/students.json");
         serde_json::from_str(source).unwrap()
     }
 }

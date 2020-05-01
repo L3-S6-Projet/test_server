@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use warp::{Filter, Rejection, Reply};
 
 use super::globals::SimpleSuccessResponse;
-use crate::db::{models::UserKind, Database, Db};
-use crate::filters::{delayed, with_db, Forbidden};
+use db::{models::UserKind, Database, Db};
+use filters::{delayed, with_db, Forbidden};
 
 #[derive(Deserialize)]
 struct LoginRequest {
@@ -31,14 +31,16 @@ pub fn routes(db: &Db) -> impl Filter<Extract = impl Reply, Error = Rejection> +
         .and(warp::body::content_length_limit(1024 * 16).and(warp::body::json()))
         .and(with_db(db.clone()))
         .and_then(post_session)
-        .and(delayed(db));
+        .and(delayed(db))
+        .boxed();
 
     let delete_session_route = warp::path!("api" / "session")
         .and(warp::delete())
         .and(warp::header::<String>("Authorization"))
         .and(with_db(db.clone()))
         .and_then(delete_session)
-        .and(delayed(db));
+        .and(delayed(db))
+        .boxed();
 
     post_session_route.or(delete_session_route)
 }

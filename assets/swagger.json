@@ -206,14 +206,14 @@
         "parameters": [
           {
             "in": "query",
-            "name": "Query",
-            "required": true,
+            "name": "query",
+            "required": false,
             "type": "string"
           },
           {
             "in": "query",
-            "name": "Page",
-            "required": true,
+            "name": "page",
+            "required": false,
             "type": "integer"
           }
         ],
@@ -485,14 +485,14 @@
         "parameters": [
           {
             "in": "query",
-            "name": "Query",
-            "required": true,
+            "name": "query",
+            "required": false,
             "type": "string"
           },
           {
             "in": "query",
-            "name": "Page",
-            "required": true,
+            "name": "page",
+            "required": false,
             "type": "integer"
           }
         ],
@@ -724,14 +724,14 @@
         "parameters": [
           {
             "in": "query",
-            "name": "Query",
-            "required": true,
+            "name": "query",
+            "required": false,
             "type": "string"
           },
           {
             "in": "query",
-            "name": "Page",
-            "required": true,
+            "name": "page",
+            "required": false,
             "type": "integer"
           }
         ],
@@ -963,14 +963,14 @@
         "parameters": [
           {
             "in": "query",
-            "name": "Query",
-            "required": true,
+            "name": "query",
+            "required": false,
             "type": "string"
           },
           {
             "in": "query",
-            "name": "Page",
-            "required": true,
+            "name": "page",
+            "required": false,
             "type": "integer"
           }
         ],
@@ -1241,14 +1241,14 @@
         "parameters": [
           {
             "in": "query",
-            "name": "Query",
-            "required": true,
+            "name": "query",
+            "required": false,
             "type": "string"
           },
           {
             "in": "query",
-            "name": "Page",
-            "required": true,
+            "name": "page",
+            "required": false,
             "type": "integer"
           }
         ],
@@ -2338,84 +2338,97 @@
     "TeacherResponse": {
       "type": "object",
       "required": [
-        "first_name",
-        "last_name",
-        "username",
-        "email",
-        "phone_number",
-        "rank",
-        "total_service",
-        "services"
+        "status",
+        "teacher"
       ],
       "properties": {
-        "first_name": {
+        "status": {
           "type": "string",
-          "example": "Mylan"
+          "example": "success"
         },
-        "last_name": {
-          "type": "string",
-          "example": "Chevalier"
-        },
-        "username": {
-          "type": "string",
-          "example": "road.buddy"
-        },
-        "email": {
-          "type": "string",
-          "example": "road.buddy@etu.univ-ac.edu"
-        },
-        "phone_number": {
-          "type": "string",
-          "example": "06 71 55 50 11"
-        },
-        "rank": {
-          "$ref": "#/definitions/Rank"
-        },
-        "total_service": {
-          "type": "integer",
-          "example": "58"
-        },
-        "services": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "class",
-              "cm",
-              "project",
-              "td",
-              "tp",
-              "administration",
-              "external"
-            ],
-            "properties": {
-              "class": {
-                "type": "string",
-                "example": "L1 Informatique"
-              },
-              "cm": {
-                "type": "integer",
-                "example": 12
-              },
-              "project": {
-                "type": "integer",
-                "example": "0"
-              },
-              "td": {
-                "type": "integer",
-                "example": "6"
-              },
-              "tp": {
-                "type": "integer",
-                "example": "6"
-              },
-              "administration": {
-                "type": "integer",
-                "example": 5
-              },
-              "external": {
-                "type": "integer",
-                "example": 0
+        "teacher": {
+          "type": "object",
+          "required": [
+            "first_name",
+            "last_name",
+            "username",
+            "email",
+            "phone_number",
+            "rank",
+            "total_service",
+            "services"
+          ],
+          "properties": {
+            "first_name": {
+              "type": "string",
+              "example": "Mylan"
+            },
+            "last_name": {
+              "type": "string",
+              "example": "Chevalier"
+            },
+            "username": {
+              "type": "string",
+              "example": "road.buddy"
+            },
+            "email": {
+              "type": "string",
+              "example": "road.buddy@etu.univ-ac.edu"
+            },
+            "phone_number": {
+              "type": "string",
+              "example": "06 71 55 50 11"
+            },
+            "rank": {
+              "$ref": "#/definitions/Rank"
+            },
+            "total_service": {
+              "type": "integer",
+              "example": "58"
+            },
+            "services": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "class",
+                  "cm",
+                  "project",
+                  "td",
+                  "tp",
+                  "administration",
+                  "external"
+                ],
+                "properties": {
+                  "class": {
+                    "type": "string",
+                    "example": "L1 Informatique"
+                  },
+                  "cm": {
+                    "type": "integer",
+                    "example": 12
+                  },
+                  "project": {
+                    "type": "integer",
+                    "example": "0"
+                  },
+                  "td": {
+                    "type": "integer",
+                    "example": "6"
+                  },
+                  "tp": {
+                    "type": "integer",
+                    "example": "6"
+                  },
+                  "administration": {
+                    "type": "integer",
+                    "example": 5
+                  },
+                  "external": {
+                    "type": "integer",
+                    "example": 0
+                  }
+                }
               }
             }
           }
@@ -2750,45 +2763,58 @@
     "StudentResponse": {
       "type": "object",
       "required": [
-        "first_name",
-        "last_name",
-        "username",
-        "total_hours",
-        "subjects"
+        "status",
+        "student"
       ],
       "properties": {
-        "first_name": {
+        "status": {
           "type": "string",
-          "example": "Fabien"
+          "example": "success"
         },
-        "last_name": {
-          "type": "string",
-          "example": "Vidal"
-        },
-        "username": {
-          "type": "string",
-          "example": "road.buddy"
-        },
-        "total_hours": {
-          "type": "integer",
-          "example": "58"
-        },
-        "subjects": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "name",
-              "group"
-            ],
-            "properties": {
-              "name": {
-                "type": "string",
-                "example": "Anglais"
-              },
-              "group": {
-                "type": "string",
-                "example": "Groupe 1"
+        "student": {
+          "type": "object",
+          "required": [
+            "first_name",
+            "last_name",
+            "username",
+            "total_hours",
+            "subjects"
+          ],
+          "properties": {
+            "first_name": {
+              "type": "string",
+              "example": "Fabien"
+            },
+            "last_name": {
+              "type": "string",
+              "example": "Vidal"
+            },
+            "username": {
+              "type": "string",
+              "example": "road.buddy"
+            },
+            "total_hours": {
+              "type": "integer",
+              "example": "58"
+            },
+            "subjects": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "group"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Anglais"
+                  },
+                  "group": {
+                    "type": "string",
+                    "example": "Groupe 1"
+                  }
+                }
               }
             }
           }

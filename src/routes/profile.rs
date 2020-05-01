@@ -2,9 +2,9 @@ use serde::Deserialize;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 use super::globals::{ErrorCode, FailureResponse, SimpleSuccessResponse};
-use crate::db::Database;
-use crate::db::Db;
-use crate::filters::{authed, delayed, with_db, Malformed, Unauthorized};
+use db::Database;
+use db::Db;
+use filters::{authed, delayed, with_db, Malformed, Unauthorized};
 
 pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let put_profile_route = warp::path!("api" / "profile")
@@ -13,7 +13,8 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(warp::body::content_length_limit(1024 * 16).and(warp::body::json()))
         .and(with_db(db.clone()))
         .and_then(put_profile)
-        .and(delayed(db));
+        .and(delayed(db))
+        .boxed();
 
     put_profile_route
 }

@@ -5,13 +5,11 @@ use super::{
     globals::{PaginatedQueryableListRequest, SimpleSuccessResponse},
     ErrorCode, FailureResponse,
 };
-use crate::{
-    db::{
-        models::{Class, ClassLevel},
-        ClassUpdate, Database, Db, NewClass,
-    },
-    filters::{authed_is_of_kind, delayed, with_db, PossibleUserKind},
+use db::{
+    models::{Class, ClassLevel},
+    ClassUpdate, Database, Db, NewClass,
 };
+use filters::{authed_is_of_kind, delayed, with_db, PossibleUserKind};
 
 pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let list_route = warp::path!("api" / "classes")
@@ -23,7 +21,8 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(with_db(db.clone()))
         .and(warp::query::<PaginatedQueryableListRequest>())
         .and_then(list)
-        .and(delayed(db));
+        .and(delayed(db))
+        .boxed();
 
     // TODO: creation constraint (unique name?)
     let create_route = warp::path!("api" / "classes")
@@ -32,7 +31,8 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(with_db(db.clone()))
         .and(warp::body::content_length_limit(1024 * 16).and(warp::body::json()))
         .and_then(create)
-        .and(delayed(db));
+        .and(delayed(db))
+        .boxed();
 
     // TODO: deletion constraints
     let delete_route = warp::path!("api" / "classes")
@@ -41,20 +41,23 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(with_db(db.clone()))
         .and(warp::body::content_length_limit(1024 * 16).and(warp::body::json()))
         .and_then(delete)
-        .and(delayed(db));
+        .and(delayed(db))
+        .boxed();
 
     let get_route = warp::path!("api" / "classes" / u32)
         .and(warp::get())
         .and(with_db(db.clone()))
         .and_then(get)
-        .and(delayed(db));
+        .and(delayed(db))
+        .boxed();
 
     let update_route = warp::path!("api" / "classes" / u32)
         .and(warp::put())
         .and(with_db(db.clone()))
         .and(warp::body::content_length_limit(1024 * 16).and(warp::body::json()))
         .and_then(update)
-        .and(delayed(db));
+        .and(delayed(db))
+        .boxed();
 
     list_route
         .or(create_route)

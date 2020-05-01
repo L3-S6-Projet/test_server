@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Serialize)]
 pub struct FailureResponse {
@@ -21,9 +21,7 @@ impl FailureResponse {
 
 #[derive(Serialize)]
 pub enum ErrorCode {
-    InternalServerError,
     NotFound,
-    MethodNotAllowed,
     InvalidCredentials,
     InsufficientAuthorization,
     MalformedData,
@@ -55,4 +53,19 @@ impl PaginatedQueryableListRequest {
             .map(|v| if v >= 1 { v } else { 1 })
             .unwrap_or(1usize)
     }
+}
+
+#[derive(Serialize)]
+pub struct AccountCreatedResponse<'a> {
+    pub status: &'static str,
+    pub username: &'a str,
+    pub password: &'a str,
+}
+
+pub fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    Deserialize::deserialize(deserializer).map(Some)
 }

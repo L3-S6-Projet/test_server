@@ -17,6 +17,12 @@ pub struct User {
     pub kind: UserKind,
 }
 
+impl User {
+    pub fn full_name(&self) -> String {
+        format!("{} {}", self.first_name, self.last_name)
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub enum UserKind {
     Administrator,
@@ -35,12 +41,13 @@ impl UserKind {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct TeacherInformations {
-    pub phone_number: String,
-    pub email: String,
+    pub phone_number: Option<String>,
+    pub email: Option<String>,
     pub rank: Rank,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
 pub enum Rank {
     Lecturer,
     Professor,

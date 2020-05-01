@@ -1,6 +1,6 @@
-use crate::db::Database;
-use crate::db::{models::UserKind, Db};
-use crate::filters::with_db;
+use db::Database;
+use db::{models::UserKind, Db};
+use crate::with_db;
 
 use warp::{Filter, Rejection};
 

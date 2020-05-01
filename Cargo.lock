@@ -138,6 +138,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "db"
+version = "0.1.0"
+dependencies = [
+ "bimap",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "tokio",
+ "unidecode",
+]
+
+[[package]]
 name = "digest"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -158,7 +170,9 @@ version = "0.1.0"
 dependencies = [
  "bimap",
  "chrono",
+ "db",
  "fern",
+ "filters",
  "log 0.4.8",
  "rand 0.7.3",
  "serde",
@@ -182,6 +196,15 @@ checksum = "8c9a4820f0ccc8a7afd67c39a0f1a0f4b07ca1725164271a64939d7aeb9af065"
 dependencies = [
  "colored",
  "log 0.4.8",
+]
+
+[[package]]
+name = "filters"
+version = "0.1.0"
+dependencies = [
+ "db",
+ "tokio",
+ "warp",
 ]
 
 [[package]]

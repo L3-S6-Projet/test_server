@@ -1,7 +1,5 @@
-use crate::{
-    db::{Database, Db},
-    filters::with_db,
-};
+use db::{Database, Db};
+use filters::with_db;
 use std::time::Duration;
 use warp::{Filter, Rejection, Reply};
 
@@ -11,26 +9,31 @@ pub fn routes(db: &Db) -> impl Filter<Extract = impl Reply, Error = Rejection> +
     let dump_route = warp::path!("api" / "dump")
         .and(warp::get())
         .and(with_db(db.clone()))
-        .and_then(dump);
+        .and_then(dump)
+        .boxed();
 
     let reset_route = warp::path!("api" / "reset")
         .and(warp::get())
         .and(with_db(db.clone()))
-        .and_then(reset);
+        .and_then(reset)
+        .boxed();
 
     let delay_route = warp::path!("api" / "delay")
         .and(warp::get())
         .and(with_db(db.clone()))
-        .and_then(delay);
+        .and_then(delay)
+        .boxed();
 
     let set_delay_route = warp::path!("api" / "delay" / u64)
         .and(warp::get())
         .and(with_db(db.clone()))
-        .and_then(set_delay);
+        .and_then(set_delay)
+        .boxed();
 
     let swagger_route = warp::path!("swagger.json")
         .and(warp::get())
-        .and_then(swagger);
+        .and_then(swagger)
+        .boxed();
 
     let swagger_ui_route = warp::path!("swagger").and(warp::get()).and_then(swagger_ui);
 

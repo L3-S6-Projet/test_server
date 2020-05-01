@@ -1,6 +1,6 @@
-use crate::db::Database;
-use crate::db::Db;
-use crate::filters::with_db;
+use db::Database;
+use db::Db;
+use crate::with_db;
 use warp::{Filter, Rejection};
 
 pub fn delayed(db: &Db) -> impl Filter<Extract = (), Error = Rejection> + Clone {

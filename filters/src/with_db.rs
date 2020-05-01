@@ -1,4 +1,4 @@
-use crate::db::Db;
+use db::Db;
 use std::convert::Infallible;
 use warp::Filter;
 

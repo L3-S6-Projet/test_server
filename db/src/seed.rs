@@ -1,21 +1,26 @@
 use super::{
     models::{Rank, StudentInformations, TeacherInformations, UserKind},
-    ClassLevel, Database, NewClass, NewClassroom, NewUser,
+    username_from_name, ClassLevel, Database, NewClass, NewClassroom, NewUser,
 };
-use crate::assets::Event;
+use crate::assets::{Event, StudentName};
 use crate::utils::UniqueExt;
 use rand::{self, Rng};
 
 pub fn seed_db<D: Database>(db: &mut D) {
     let events = Event::from_parsed_ical();
+    let student_names = StudentName::from_parsed_json();
 
     let users = test_users();
     let classrooms = test_classrooms(&events);
     let teachers = test_teachers(&events);
     let classes = test_classes();
+    let students = test_students(&student_names);
 
     db.seed(
-        users.into_iter().chain(teachers.into_iter()),
+        users
+            .into_iter()
+            .chain(teachers.into_iter())
+            .chain(students.into_iter()),
         classrooms.into_iter(),
         classes.into_iter(),
     );
@@ -26,26 +31,23 @@ fn test_users() -> Vec<NewUser> {
         NewUser {
             first_name: "Admin".to_string(),
             last_name: "User".to_string(),
-            username: "admin".to_string(),
-            password: "admin".to_string(),
+            password: "user.admin".to_string(),
             kind: UserKind::Administrator,
         },
         NewUser {
             first_name: "Teacher".to_string(),
             last_name: "User".to_string(),
-            username: "teacher".to_string(),
-            password: "teacher".to_string(),
+            password: "user.teacher".to_string(),
             kind: UserKind::Teacher(TeacherInformations {
-                phone_number: random_phone_number(rand::thread_rng()),
-                email: "teacher@edu.univ-amu.fr".to_string(),
+                phone_number: Some(random_phone_number(rand::thread_rng())),
+                email: Some("teacher@edu.univ-amu.fr".to_string()),
                 rank: Rank::Professor,
             }),
         },
         NewUser {
             first_name: "Student".to_string(),
             last_name: "User".to_string(),
-            username: "student".to_string(),
-            password: "student".to_string(),
+            password: "user.student".to_string(),
             kind: UserKind::Student(StudentInformations {
                 class_id: 0, // TODO
             }),
@@ -81,20 +83,17 @@ fn test_teachers(events: &Vec<Event>) -> Vec<NewUser> {
             (parts.next().unwrap(), parts.next().unwrap())
         };
 
-        let username = unidecode::unidecode(teacher_name)
-            .to_ascii_lowercase()
-            .replace(" ", ".");
+        let username = username_from_name(firstname, lastname);
 
         let informations = TeacherInformations {
-            phone_number: random_phone_number(rng),
-            email: format!("{}@edu.univ-amu.fr", username),
+            phone_number: Some(random_phone_number(rng)),
+            email: Some(format!("{}@edu.univ-amu.fr", username)),
             rank: Rank::Professor,
         };
 
         new_users.push(NewUser {
             first_name: firstname.to_string(),
             last_name: lastname.to_string(),
-            username: username.clone(),
             password: username,
             kind: UserKind::Teacher(informations),
         });
@@ -126,4 +125,25 @@ fn test_classes() -> Vec<NewClass> {
         name: "L3 Informatique".to_string(),
         level: ClassLevel::L3,
     }]
+}
+
+fn test_students(names: &Vec<StudentName>) -> Vec<NewUser> {
+    let mut new_users = Vec::new();
+
+    for name in names {
+        let username = username_from_name(&name.first_name, &name.last_name);
+
+        let informations = StudentInformations {
+            class_id: 0, // TODO
+        };
+
+        new_users.push(NewUser {
+            first_name: name.first_name.clone(),
+            last_name: name.last_name.clone(),
+            password: username,
+            kind: UserKind::Student(informations),
+        });
+    }
+
+    new_users
 }

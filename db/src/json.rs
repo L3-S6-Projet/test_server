@@ -5,10 +5,10 @@ use std::io::{Read, Write};
 use std::{collections::HashMap, fs::File, time::Duration};
 
 use super::{
-    models::Class, seed::seed_db, ClassUpdate, ClassroomUpdate, Database, NewClass, NewClassroom,
-    UpdateStatus, PAGE_SIZE,
+    models::Class, seed::seed_db, username_from_name, ClassUpdate, ClassroomUpdate, Database,
+    NewClass, NewClassroom, UpdateStatus, PAGE_SIZE,
 };
-use crate::db::models::{Classroom, User};
+use crate::models::{Classroom, User};
 
 #[derive(Serialize, Deserialize)]
 pub struct JSONDatabase {
@@ -96,7 +96,9 @@ impl Database for JSONDatabase {
         classes: impl Iterator<Item = NewClass>,
     ) {
         classrooms.for_each(|c| self._classroom_add(c));
-        users.for_each(|u| self._user_add(u));
+        users.for_each(|u| {
+            self._user_add(u);
+        });
         classes.for_each(|c| self._class_add(c));
         self.persist().expect("could not save DB");
     }
@@ -137,9 +139,10 @@ impl Database for JSONDatabase {
     fn classroom_list(&self, page: usize, query: Option<&str>) -> (usize, Vec<&Classroom>) {
         _search(
             self.classrooms.values(),
-            |c: &Classroom| &c.name,
+            |c: &Classroom| c.name.to_string(),
             page,
             query,
+            |_| true,
         )
     }
 
@@ -189,18 +192,63 @@ impl Database for JSONDatabase {
         }
     }
 
-    fn user_add(&mut self, user: super::NewUser) {
-        self._user_add(user);
-        self.persist().expect("could not save DB")
+    fn user_add(&mut self, user: super::NewUser) -> &User {
+        let username = self._user_add(user);
+        self.persist().expect("could not save DB");
+        self.users.get(&username).expect("user was just added")
     }
 
     fn user_get(&self, username: &str) -> Option<&User> {
         self.users.get(username)
     }
 
+    fn user_get_by_id(&self, id: u32) -> Option<&User> {
+        self.users.values().find(|u| u.id == id)
+    }
+
     fn user_update(&mut self, user: User) {
         self.users.insert(user.username.clone(), user);
         self.persist().expect("could not save DB");
+    }
+
+    fn user_list(
+        &self,
+        page: usize,
+        query: Option<&str>,
+        filter: impl Fn(&User) -> bool,
+    ) -> (usize, Vec<&User>) {
+        _search(
+            self.users.values(),
+            |u: &User| u.full_name(),
+            page,
+            query,
+            filter,
+        )
+    }
+
+    fn user_remove(&mut self, users: &[u32]) -> bool {
+        let all_users_ids: Vec<u32> = self.users.values().map(|u| u.id).collect();
+
+        // Check first that all IDS exist
+        if !users.iter().all(|id| all_users_ids.contains(id)) {
+            return false;
+        }
+
+        let removed_usernames: Vec<String> = self
+            .users
+            .values()
+            .filter(|u| users.contains(&u.id))
+            .map(|u| u.username.clone())
+            .collect();
+
+        for username in removed_usernames {
+            self.tokens.remove_by_right(&username);
+        }
+
+        self.users.retain(|_, u| !users.contains(&u.id));
+        // TODO: persist
+        self.persist().expect("could not save DB");
+        true
     }
 
     fn class_add(&mut self, class: NewClass) {
@@ -209,7 +257,13 @@ impl Database for JSONDatabase {
     }
 
     fn class_list(&self, page: usize, query: Option<&str>) -> (usize, Vec<&Class>) {
-        _search(self.classes.values(), |c: &Class| &c.name, page, query)
+        _search(
+            self.classes.values(),
+            |c: &Class| c.name.to_string(),
+            page,
+            query,
+            |_| true,
+        )
     }
 
     fn class_remove(&mut self, classes: &[u32]) -> bool {
@@ -263,20 +317,23 @@ impl Database for JSONDatabase {
 }
 
 impl JSONDatabase {
-    fn _user_add(&mut self, user: super::NewUser) {
+    fn _user_add(&mut self, user: super::NewUser) -> String {
+        let username = username_from_name(&user.first_name, &user.last_name);
+
         self.users.insert(
-            user.username.clone(),
+            username.clone(),
             User {
                 id: self.next_user_id,
                 first_name: user.first_name,
                 last_name: user.last_name,
-                username: user.username,
+                username: username.clone(),
                 password: user.password,
                 kind: user.kind,
             },
         );
 
         self.next_user_id += 1;
+        username
     }
 
     fn _classroom_add(&mut self, classroom: NewClassroom) {
@@ -302,15 +359,15 @@ impl JSONDatabase {
     }
 }
 
-fn _search<'a, T, F, S>(
+fn _search<'a, T, F>(
     collection: impl Iterator<Item = &'a T>,
     property: F,
     page: usize,
     query: Option<&str>,
+    custom_filter: impl Fn(&T) -> bool,
 ) -> (usize, Vec<&'a T>)
 where
-    F: Fn(&T) -> &S,
-    S: AsRef<str>,
+    F: Fn(&T) -> String,
 {
     let mut filter = contains_query(query, property);
     let mut total = 0;
@@ -319,7 +376,7 @@ where
     let to_skip = (page - 1) * PAGE_SIZE;
 
     for row in collection {
-        if !filter(&row) {
+        if !filter(&row) || !custom_filter(&row) {
             continue;
         }
 
@@ -337,18 +394,17 @@ where
 
 /// Returns a function to be used as a filter that checks if the provided query is contained in the
 /// object string.
-fn contains_query<T, S, F>(query: Option<&str>, property: F) -> impl FnMut(&&T) -> bool
+fn contains_query<T, F>(query: Option<&str>, property: F) -> impl FnMut(&&T) -> bool
 where
-    F: Fn(&T) -> &S,
-    S: AsRef<str>,
+    F: Fn(&T) -> String,
 {
     let normalize = |s: &str| unidecode::unidecode(s.trim()).to_ascii_lowercase();
     let query = query.map(|d| truncate(d, 50)).map(normalize);
 
     move |object: &&T| {
         if let Some(query) = &query {
-            let name = property(object).as_ref();
-            let name = normalize(name);
+            let name = property(object);
+            let name = normalize(&name);
             name.contains(query)
         } else {
             true

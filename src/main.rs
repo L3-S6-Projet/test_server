@@ -1,14 +1,14 @@
+//#![type_length_limit = "1112968"]
+
+// TODO: validate incoming data
+
 use fern::colors::{Color, ColoredLevelConfig};
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
-mod assets;
-mod db;
-mod filters;
 mod routes;
-mod utils;
 
-use crate::filters::{Forbidden, Malformed, Unauthorized};
 use db::new_db;
+use filters::{Forbidden, Malformed, Unauthorized};
 use routes::{routes, ErrorCode, FailureResponse};
 
 #[tokio::main]
@@ -24,7 +24,7 @@ async fn main() {
         .allow_headers(vec!["content-type", "authorization"]);
 
     let filters = filters
-        // Before logging for correct status codes
+        // Before logging for correct status codes, before CORS for proper headers
         .recover(handle_rejection)
         .with(warp::log("dummy"))
         .with(cors);
@@ -50,7 +50,7 @@ fn setup_logging() {
         .expect("Could not apply logging configuration");
 }
 
-async fn handle_rejection(err: Rejection) -> Result<impl Reply, std::convert::Infallible> {
+async fn handle_rejection(err: Rejection) -> Result<impl Reply, warp::Rejection> {
     let error_code;
     let status_code;
 
@@ -66,12 +66,9 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, std::convert::In
     } else if let Some(Malformed) = err.find() {
         error_code = ErrorCode::MalformedData;
         status_code = StatusCode::BAD_REQUEST;
-    } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
-        error_code = ErrorCode::MethodNotAllowed;
-        status_code = StatusCode::METHOD_NOT_ALLOWED;
     } else {
-        error_code = ErrorCode::InternalServerError;
-        status_code = StatusCode::INTERNAL_SERVER_ERROR;
+        // Unknown error : pass it along, will be handled by warp.
+        return Err(err);
     }
 
     let json = warp::reply::json(&FailureResponse::new(error_code));
