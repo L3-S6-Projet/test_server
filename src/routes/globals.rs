@@ -27,6 +27,7 @@ pub enum ErrorCode {
     MalformedData,
     InvalidOldPassword,
     InvalidID,
+    IllegalRequest,
 }
 
 #[derive(Serialize)]

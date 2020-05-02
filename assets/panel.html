@@ -1,16 +1,79 @@
-Scolendar dummy server v#VERSION
+<!DOCTYPE html>
+<html>
 
-<pre>
-<a href="/swagger">Swagger</a>
-<a href="/api/dump">Dump</a>
-<a href="/api/reset">Reset data</a>
+<head>
+    <title>Scolendar dummy server v#VERSION</title>
+    <style type="text/css">
+        body {
+            margin: 40px auto;
+            max-width: 650px;
+            line-height: 1.6;
+            font-size: 18px;
+            color: #444;
+            padding: 0 10px;
+            background: #333;
+            color: #ccc;
+        }
 
----
+        a {
+            color: #ccc;
+        }
 
-<a href="/api/delay">View delay</a>
-<a href="/api/delay/0">Remove delay</a>
-<a href="/api/delay/500">Set delay to 500ms</a>
-<a href="/api/delay/1000">Set delay to 1s</a>
-<a href="/api/delay/2500">Set delay to 2.5s</a>
-<a href="/api/delay/10000">Set delay to 10s</a>
-</pre>
+        h1,
+        h2,
+        h3 {
+            line-height: 1.2
+        }
+
+        .white-space-pre-line {
+            white-space: pre-line;
+        }
+
+        .code {
+            background: #222;
+            padding: 8px 12px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Scolendar dummy server v#VERSION</h1>
+
+    <h2>Actions</h2>
+
+    <div class="white-space-pre-line">
+        <a href="/swagger">Swagger</a> - Documentation
+        <a href="/api/dump">Dump</a> - valeur de db.json
+        <a href="/api/reset">Reset data</a>
+        ---
+        <a href="/api/delay">View delay</a>
+        <a href="/api/delay/0">Remove delay</a>
+        <a href="/api/delay/500">Set delay to 500ms</a>
+        <a href="/api/delay/1000">Set delay to 1s</a>
+        <a href="/api/delay/2500">Set delay to 2.5s</a>
+        <a href="/api/delay/10000">Set delay to 10s</a>
+    </div>
+
+    <h2>Mini documentation</h2>
+
+    <p>
+        Ce serveur persiste ses données dans un fichier db.json. On peut s'échanger ce fichier quand le serveur est
+        éteint.
+        Le lien de réinitialisation supprime toutes les données du serveur, puis ajoute les données de test.
+    </p>
+
+    <p>L'authentification est gérée avec un système de token : on récupére un token à la connexion. On doit ensuite
+        l'envoyer à chaque requête avec le header suivant:</p>
+    <pre class="code">Authorization: Bearer $TOKEN</pre>
+
+    <p>
+        Pour pouvoir utiliser les routes dans la documentation swagger, il faut cliquer sur "Authorize" en haut à
+        droite, puis rentrer "Bearer $TOKEN" et cliquer sur "Authorize".
+    </p>
+
+    <p>Par défaut, trois utilisateurs de test sont créé : user.admin, user.teacher et user.student.</p>
+    <p>Le mot de passe de chaque utilisteur créé par défaut est le même que son nom d'utilisateur.</p>
+</body>
+
+</html>

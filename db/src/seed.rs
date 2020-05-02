@@ -1,6 +1,6 @@
 use super::{
     models::{Rank, StudentInformations, TeacherInformations, UserKind},
-    username_from_name, ClassLevel, Database, NewClass, NewClassroom, NewUser,
+    username_from_name, ClassLevel, Database, NewClass, NewClassroom, NewSubject, NewUser,
 };
 use crate::assets::{Event, StudentName};
 use crate::utils::UniqueExt;
@@ -15,6 +15,7 @@ pub fn seed_db<D: Database>(db: &mut D) {
     let teachers = test_teachers(&events);
     let classes = test_classes();
     let students = test_students(&student_names);
+    let subjects = test_subjects(&events);
 
     db.seed(
         users
@@ -23,6 +24,7 @@ pub fn seed_db<D: Database>(db: &mut D) {
             .chain(students.into_iter()),
         classrooms.into_iter(),
         classes.into_iter(),
+        subjects.into_iter(),
     );
 }
 
@@ -146,4 +148,18 @@ fn test_students(names: &Vec<StudentName>) -> Vec<NewUser> {
     }
 
     new_users
+}
+
+fn test_subjects(events: &Vec<Event>) -> Vec<NewSubject> {
+    events
+        .iter()
+        .map(|e| e.subject.to_string())
+        .unique()
+        .enumerate()
+        .map(|(index, name)| NewSubject {
+            name,
+            class_id: 0,                            // TODO
+            teacher_in_charge_id: 3 + index as u32, // TODO
+        })
+        .collect()
 }

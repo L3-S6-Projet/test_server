@@ -3,6 +3,7 @@
 // TODO: validate incoming data
 
 use fern::colors::{Color, ColoredLevelConfig};
+use log::info;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 mod routes;
@@ -29,6 +30,7 @@ async fn main() {
         .with(warp::log("dummy"))
         .with(cors);
 
+    info!("Open http://127.0.0.1:3030 for more information");
     warp::serve(filters).run(([0, 0, 0, 0], 3030)).await;
 }
 

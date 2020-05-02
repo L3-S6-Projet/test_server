@@ -8,8 +8,9 @@ mod classroom;
 mod globals;
 mod manage;
 mod profile;
-mod teacher;
 mod student;
+mod subject;
+mod teacher;
 
 pub use globals::{ErrorCode, FailureResponse};
 
@@ -21,4 +22,5 @@ pub fn routes(db: &Db) -> impl Filter<Extract = impl Reply, Error = Rejection> +
         .or(class::routes(db))
         .or(teacher::routes(db))
         .or(student::routes(db))
+        .or(subject::routes(db))
 }

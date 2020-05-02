@@ -76,3 +76,27 @@ pub enum ClassLevel {
     M1,
     M2,
 }
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct Subject {
+    pub id: u32,
+    pub class_id: u32,
+    pub name: String,
+    pub group_count: u32,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct SubjectTeacher {
+    pub id: u32,
+    pub teacher_id: u32,
+    pub subject_id: u32,
+    pub in_charge: bool,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct StudentSubject {
+    pub id: u32,
+    pub subject_id: u32,
+    pub student_id: u32,
+    pub group_number: u32,
+}

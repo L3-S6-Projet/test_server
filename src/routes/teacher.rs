@@ -10,6 +10,7 @@ use super::{
     ErrorCode, FailureResponse,
 };
 use db::{
+    group_numbers,
     models::{Rank, TeacherInformations, UserKind},
     Database, Db, NewUser,
 };
@@ -48,6 +49,8 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(delayed(db))
         .boxed();
 
+    // TODO: missing auth??
+
     let get_route = warp::path!("api" / "teachers" / u32)
         .and(warp::get())
         .and(with_db(db.clone()))
@@ -63,11 +66,19 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(delayed(db))
         .boxed();
 
+    let subjects_get_route = warp::path!("api" / "teachers" / u32 / "subjects")
+        .and(warp::get())
+        .and(with_db(db.clone()))
+        .and_then(subjects_get)
+        .and(delayed(db))
+        .boxed();
+
     list_route
         .or(create_route)
         .or(delete_route)
         .or(get_route)
         .or(update_route)
+        .or(subjects_get_route)
 }
 
 #[derive(Serialize)]
@@ -94,7 +105,7 @@ async fn list(
     let db = db.lock().await;
 
     let page = request.normalized_page_number();
-    let (total, users) = db.user_list(page, request.query.as_deref(), |u| match u.kind {
+    let (total, users) = db.user_list(Some(page), request.query.as_deref(), |u| match u.kind {
         UserKind::Student(_) => false,
         UserKind::Administrator => false,
         UserKind::Teacher(_) => true,
@@ -318,4 +329,116 @@ async fn update(
             StatusCode::NO_CONTENT
         },
     ))
+}
+
+#[derive(Serialize)]
+struct SubjectGetResponseList<'a> {
+    status: &'static str,
+    subjects: Vec<SubjectGetResponse<'a>>,
+}
+
+#[derive(Serialize)]
+struct SubjectGetResponse<'a> {
+    id: u32,
+    name: &'a str,
+    class_name: String,
+    teachers: Vec<TeacherSubjectGetResponse<'a>>,
+    groups: Vec<GroupSubjectGetResponse>,
+}
+
+#[derive(Serialize)]
+struct TeacherSubjectGetResponse<'a> {
+    first_name: &'a str,
+    last_name: &'a str,
+    in_charge: bool,
+    email: Option<&'a str>,
+    phone_number: Option<&'a str>,
+}
+
+#[derive(Serialize)]
+struct GroupSubjectGetResponse {
+    number: u32,
+    name: String,
+    count: u32,
+}
+
+async fn subjects_get(id: u32, db: Db) -> Result<impl warp::Reply, std::convert::Infallible> {
+    let db = db.lock().await;
+
+    // in: $teacher_id
+    // list of all subjects $teacher_id participates in : db.teacher_subjects
+    //    -> for each subject, list of all teachers : filter(db.teacher_teaches) as in subject.rs
+    //    -> for each subject, list of all groups : just use subject.group_count + db::group_numbers as in subject.rs
+
+    if db.user_get_teacher_by_id(id).is_none() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+            StatusCode::NOT_FOUND,
+        ));
+    }
+
+    let teacher_subjects = db.teacher_subjects(id);
+
+    let mut subjects: Vec<SubjectGetResponse> = Vec::new();
+
+    // For each subject that the teacher is in.
+    for teacher_subject in teacher_subjects {
+        // Eg: L3 Informatique
+        let class_name = db
+            .class_get(teacher_subject.class_id)
+            .expect("invalid class_id in user informations")
+            .name
+            .to_string();
+
+        // List of all teachers that teach this subject.
+        let subject_teachers: Vec<TeacherSubjectGetResponse> = db.user_list(None, None, |u| match u.kind {
+            UserKind::Student(_) => false,
+            UserKind::Administrator => false,
+            UserKind::Teacher(_) => true,
+        } && db.teacher_teaches(u.id, teacher_subject.id)).1.iter().map(|u| {
+            let informations = match &u.kind {
+                UserKind::Student(_) => unreachable!(),
+                UserKind::Administrator => unreachable!(),
+                UserKind::Teacher(informations) => informations,
+            };
+
+            TeacherSubjectGetResponse {
+                first_name: &u.first_name,
+                last_name: &u.last_name,
+                in_charge: db.teacher_in_charge(u.id, teacher_subject.id),
+                email: informations.email.as_deref(),
+                phone_number: informations.phone_number.as_deref(),
+            }
+        }).collect();
+
+        let total_student_count: usize = db.subject_students(teacher_subject.id).len();
+
+        let groups: Vec<GroupSubjectGetResponse> = (0..teacher_subject.group_count)
+            .zip(group_numbers(
+                total_student_count,
+                teacher_subject.group_count,
+            ))
+            .map(|(number, group_count)| GroupSubjectGetResponse {
+                number,
+                name: format!("Groupe {}", number + 1),
+                count: group_count,
+            })
+            .collect();
+
+        subjects.push(SubjectGetResponse {
+            id: teacher_subject.id,
+            name: &teacher_subject.name,
+            class_name,
+            teachers: subject_teachers,
+            groups,
+        });
+    }
+
+    return Ok(warp::reply::with_status(
+        warp::reply::json(&SubjectGetResponseList {
+            status: "success",
+            subjects,
+        }),
+        StatusCode::OK,
+    ));
 }
