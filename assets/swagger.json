@@ -1023,7 +1023,7 @@
         "tags": [
           "students"
         ],
-        "summary": "Deletes the given teachers using their IDs.",
+        "summary": "Deletes the given students using their IDs.",
         "description": "Note : only users with the role `administrator` should be able to access this route.\nThis request should trigger the re-organization of students in the affected groups.",
         "security": [
           {
@@ -1375,7 +1375,7 @@
           "subjects"
         ],
         "summary": "Updates information for a subject.",
-        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "description": "Note : only users with the role `administrator` should be able to access this route. The teacher designed by teacher_in_charge_id should already be a teacher of that subject.",
         "security": [
           {
             "token": []
@@ -1643,7 +1643,7 @@
         "tags": [
           "subjects"
         ],
-        "summary": "Removes groups from a subject using their IDs.",
+        "summary": "Removes a group from a subject.",
         "description": "Note : only users with the role `administrator` should be able to access this route. This should trigger the re-organisation of groups. This request should be denied if there is less than one group in the subject.",
         "security": [
           {
@@ -1657,14 +1657,6 @@
             "description": "Subject ID",
             "required": true,
             "type": "integer"
-          },
-          {
-            "in": "body",
-            "name": "IDRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/IDRequest"
-            }
           }
         ],
         "responses": {
@@ -1683,7 +1675,7 @@
         }
       }
     },
-    "/subjects/{id}/groups/{group_id}/occupancies": {
+    "/subjects/{id}/groups/{group_number}/occupancies": {
       "get": {
         "tags": [
           "role-professor"
@@ -1705,8 +1697,8 @@
           },
           {
             "in": "path",
-            "name": "group_id",
-            "description": "Group ID",
+            "name": "group_number",
+            "description": "Group number",
             "required": true,
             "type": "integer"
           },
@@ -1755,8 +1747,8 @@
           },
           {
             "in": "path",
-            "name": "group_id",
-            "description": "Group ID",
+            "name": "group_number",
+            "description": "Group Number",
             "required": true,
             "type": "integer"
           },
@@ -2013,54 +2005,70 @@
       }
     },
     "Occupancies": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "id",
-          "classroom",
-          "group_name",
-          "subject_name",
-          "teacher_name",
-          "start",
-          "end",
-          "type"
-        ],
-        "properties": {
-          "id": {
-            "type": "integer",
-            "example": 0
-          },
-          "classroom_name": {
-            "type": "string",
-            "example": "B.001"
-          },
-          "group_name": {
-            "type": "string",
-            "example": "Groupe 1"
-          },
-          "subject_name": {
-            "type": "string",
-            "example": "Algorithmique"
-          },
-          "teacher_name": {
-            "type": "string",
-            "example": "mylan chevalier"
-          },
-          "start": {
-            "type": "integer",
-            "example": 1587776227
-          },
-          "end": {
-            "type": "integer",
-            "example": 1587779827
-          },
-          "type": {
-            "$ref": "#/definitions/OccupancyType"
-          },
-          "class_name": {
-            "type": "string",
-            "example": "L3 Informatique"
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "occupancies": {
+          "type": "object",
+          "properties": {
+            "01-05-2020": {
+              "type": "object",
+              "required": [
+                "id",
+                "classroom",
+                "group_name",
+                "subject_name",
+                "teacher_name",
+                "start",
+                "end",
+                "occupancy_type",
+                "name"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "example": 0
+                },
+                "classroom_name": {
+                  "type": "string",
+                  "example": "B.001"
+                },
+                "group_name": {
+                  "type": "string",
+                  "example": "Groupe 1"
+                },
+                "subject_name": {
+                  "type": "string",
+                  "example": "Algorithmique"
+                },
+                "teacher_name": {
+                  "type": "string",
+                  "example": "mylan chevalier"
+                },
+                "start": {
+                  "type": "integer",
+                  "example": 1587776227
+                },
+                "end": {
+                  "type": "integer",
+                  "example": 1587779827
+                },
+                "occupancy_type": {
+                  "$ref": "#/definitions/OccupancyType"
+                },
+                "class_name": {
+                  "type": "string",
+                  "example": "L3 Informatique"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "Algorithmique CM Groupe 1"
+                }
+              }
+            }
           }
         }
       }
@@ -2070,7 +2078,8 @@
       "required": [
         "type",
         "start",
-        "end"
+        "end",
+        "occupancies_per_day"
       ],
       "properties": {
         "start": {
@@ -2080,6 +2089,11 @@
         "end": {
           "type": "integer",
           "example": 1587779827
+        },
+        "occupancies_per_day": {
+          "type": "integer",
+          "example": 0,
+          "description": "Pass 0 to return ALL the events."
         }
       }
     },
@@ -2470,10 +2484,6 @@
           "type": "string",
           "example": "success"
         },
-        "total": {
-          "type": "integer",
-          "example": 100
-        },
         "subjects": {
           "type": "array",
           "items": {
@@ -2524,7 +2534,7 @@
                 "items": {
                   "type": "object",
                   "properties": {
-                    "id": {
+                    "number": {
                       "type": "integer",
                       "example": 0
                     },
@@ -2849,10 +2859,6 @@
           "type": "string",
           "example": "success"
         },
-        "total": {
-          "type": "integer",
-          "example": 0
-        },
         "subjects": {
           "type": "array",
           "items": {
@@ -2968,7 +2974,7 @@
       "properties": {
         "name": {
           "type": "string",
-          "example": "L1 Informatique"
+          "example": "PPPE"
         },
         "class_id": {
           "type": "integer",
@@ -2983,59 +2989,76 @@
     "SubjectResponse": {
       "type": "object",
       "required": [
-        "name",
-        "class_name",
-        "total_hours"
+        "status",
+        "subject"
       ],
       "properties": {
-        "name": {
+        "status": {
           "type": "string",
-          "example": "PPPE"
+          "example": "success"
         },
-        "class_name": {
-          "type": "string",
-          "example": "L3 Informatique"
-        },
-        "total_hours": {
-          "type": "integer",
-          "example": 50
-        },
-        "teachers": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer",
-                "example": 0
-              },
-              "first_name": {
-                "type": "string",
-                "example": "Mylan"
-              },
-              "last_name": {
-                "type": "string",
-                "example": "Chevalier"
+        "subject": {
+          "type": "object",
+          "required": [
+            "name",
+            "class_name",
+            "total_hours"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "example": "PPPE"
+            },
+            "class_name": {
+              "type": "string",
+              "example": "L3 Informatique"
+            },
+            "total_hours": {
+              "type": "integer",
+              "example": 50
+            },
+            "teachers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 0
+                  },
+                  "first_name": {
+                    "type": "string",
+                    "example": "Mylan"
+                  },
+                  "last_name": {
+                    "type": "string",
+                    "example": "Chevalier"
+                  },
+                  "in_charge": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
               }
-            }
-          }
-        },
-        "groups": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "integer",
-                "example": 0
-              },
-              "name": {
-                "type": "string",
-                "example": "Groupe 1"
-              },
-              "count": {
-                "type": "integer",
-                "example": 22
+            },
+            "groups": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "example": 0
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Groupe 1"
+                  },
+                  "count": {
+                    "type": "integer",
+                    "example": 22
+                  }
+                }
               }
             }
           }
@@ -3057,7 +3080,11 @@
           "type": "integer",
           "example": 1587779827
         },
-        "type": {
+        "name": {
+          "type": "string",
+          "example": "nom du cours"
+        },
+        "occupancy_type": {
           "$ref": "#/definitions/OccupancyType"
         }
       }
@@ -3076,6 +3103,10 @@
         "end": {
           "type": "integer",
           "example": 1587779827
+        },
+        "name": {
+          "type": "string",
+          "example": "nom du cours"
         }
       }
     }

@@ -3,12 +3,15 @@ use serde::{Deserialize, Serialize};
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 use super::{
-    globals::{AccountCreatedResponse, PaginatedQueryableListRequest, SimpleSuccessResponse},
+    globals::{
+        AccountCreatedResponse, OccupanciesListResponse, OccupanciesRequest,
+        PaginatedQueryableListRequest, SimpleSuccessResponse,
+    },
     ErrorCode, FailureResponse,
 };
 use db::{
     group_numbers,
-    models::{StudentInformations, UserKind},
+    models::{OccupancyType, StudentInformations, UserKind},
     Database, Db, NewUser,
 };
 use filters::{authed_is_of_kind, delayed, with_db, PossibleUserKind};
@@ -70,12 +73,21 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(delayed(db))
         .boxed();
 
+    let occupancies_get_route = warp::path!("api" / "students" / u32 / "occupancies")
+        .and(warp::get())
+        .and(with_db(db.clone()))
+        .and(warp::query::<OccupanciesRequest>())
+        .and_then(occupancies_get)
+        .and(delayed(db))
+        .boxed();
+
     list_route
         .or(create_route)
         .or(delete_route)
         .or(get_route)
         .or(update_route)
         .or(subjects_get_route)
+        .or(occupancies_get_route)
 }
 
 #[derive(Serialize)]
@@ -448,4 +460,71 @@ async fn subjects_get(id: u32, db: Db) -> Result<impl warp::Reply, warp::Rejecti
         }),
         StatusCode::OK,
     ));
+}
+
+async fn occupancies_get(
+    id: u32,
+    db: Db,
+    request: OccupanciesRequest,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let db = db.lock().await;
+
+    if db.user_get_student_by_id(id).is_none() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+            StatusCode::NOT_FOUND,
+        ));
+    }
+
+    let student_subjects = db.student_subjects(id);
+
+    let occupancies_list = db.occupancies_list(request.start, request.end);
+
+    let occupancies_list = occupancies_list
+        .into_iter()
+        .filter(|o| {
+            use OccupancyType::*;
+
+            // First check that it is an activity that the student will take part in
+            match o.occupancy_type {
+                Administration | External => return false,
+                _ => {}
+            }
+
+            // Check that the subject exists (it should : this should be None for External type only)
+            let subject_id = match o.subject_id {
+                Some(subject_id) => subject_id,
+                None => return false,
+            };
+
+            // Check that the student participates in that subject
+            let student_subject = student_subjects
+                .iter()
+                .find(|student_subject| student_subject.id == subject_id);
+
+            if student_subject.is_none() {
+                return false;
+            }
+
+            // Check the group number
+            let occupancy_group_number = match o.group_number {
+                Some(group_number) => group_number,
+                // No group number : type is CM or Projet, student will participate
+                None => return true,
+            };
+
+            // Check that the user is in that group
+            let student_group = db.student_group(id, subject_id);
+
+            student_group == occupancy_group_number
+        })
+        .collect();
+
+    let response =
+        OccupanciesListResponse::from_list(&db, occupancies_list, request.occupancies_per_day);
+
+    Ok(warp::reply::with_status(
+        warp::reply::json(&response),
+        StatusCode::OK,
+    ))
 }

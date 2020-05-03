@@ -12,12 +12,17 @@ use db::new_db;
 use filters::{Forbidden, Malformed, Unauthorized};
 use routes::{routes, ErrorCode, FailureResponse};
 
+// TODO: persist if dirty periodically instead of for every request
+// TODO: also add a gracefull handler to save if exited brutally
+
 #[tokio::main]
 async fn main() {
     setup_logging();
 
     let global_db = new_db("db.json".to_string());
     let filters = routes(&global_db);
+
+    //tokio::spawn(save_regurarly(global_db));
 
     let cors = warp::cors()
         .allow_any_origin()
@@ -33,6 +38,19 @@ async fn main() {
     info!("Open http://127.0.0.1:3030 for more information");
     warp::serve(filters).run(([0, 0, 0, 0], 3030)).await;
 }
+
+/*async fn save_regurarly(db: Db) {
+    let delay = Duration::from_secs(1);
+    loop {
+        save(&db).await;
+        tokio::time::delay_for(delay).await;
+    }
+}
+
+async fn save(db: &Db) {
+    let db = db.lock().await;
+    db.persist().expect("could not save DB");
+}*/
 
 fn setup_logging() {
     let colors = ColoredLevelConfig::new().debug(Color::Magenta);

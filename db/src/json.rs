@@ -7,11 +7,12 @@ use std::{collections::HashMap, fs::File, time::Duration};
 
 use super::{
     models::Class, seed::seed_db, username_from_name, ClassUpdate, ClassroomUpdate, Database,
-    NewClass, NewClassroom, NewSubject, SubjectUpdate, UpdateStatus, PAGE_SIZE,
+    NewClass, NewClassroom, NewOccupancySeed, NewSubject, SubjectUpdate, UpdateStatus, PAGE_SIZE,
 };
 use crate::{
     groups,
-    models::{Classroom, StudentSubject, Subject, SubjectTeacher, User, UserKind},
+    models::{Classroom, Occupancy, StudentSubject, Subject, SubjectTeacher, User, UserKind},
+    NewOccupancy,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -25,12 +26,14 @@ pub struct JSONDatabase {
     subjects: HashMap<u32, Subject>,
     subjects_teachers: HashMap<u32, SubjectTeacher>,
     subjects_students: HashMap<u32, StudentSubject>,
+    occupancies: HashMap<u32, Occupancy>,
     next_user_id: u32,
     next_classroom_id: u32,
     next_class_id: u32,
     next_subject_id: u32,
     next_subject_teacher_id: u32,
     next_subject_students_id: u32,
+    next_occupancy_id: u32,
 }
 
 impl JSONDatabase {
@@ -57,12 +60,14 @@ impl JSONDatabase {
             subjects: HashMap::new(),
             subjects_teachers: HashMap::new(),
             subjects_students: HashMap::new(),
+            occupancies: HashMap::new(),
             next_user_id: 0,
             next_classroom_id: 0,
             next_class_id: 0,
             next_subject_id: 0,
             next_subject_teacher_id: 0,
             next_subject_students_id: 0,
+            next_occupancy_id: 0,
         };
 
         db.reset();
@@ -80,7 +85,7 @@ impl JSONDatabase {
         Ok(serde_json::from_str(&contents)?)
     }
 
-    fn persist(&self) -> Result<(), std::io::Error> {
+    pub fn persist(&self) -> Result<(), std::io::Error> {
         let mut output = File::create(&self.filename)?;
         write!(output, "{}", self.dump_as_json()?)?;
         Ok(())
@@ -106,12 +111,14 @@ impl Database for JSONDatabase {
         self.subjects.clear();
         self.subjects_teachers.clear();
         self.subjects_students.clear();
+        self.occupancies.clear();
         self.next_user_id = 0;
         self.next_classroom_id = 0;
         self.next_class_id = 0;
         self.next_subject_id = 0;
         self.next_subject_teacher_id = 0;
         self.next_subject_students_id = 0;
+        self.next_occupancy_id = 0;
 
         // Will call self.seed()
         seed_db(self);
@@ -125,6 +132,7 @@ impl Database for JSONDatabase {
         classrooms: impl Iterator<Item = NewClassroom>,
         classes: impl Iterator<Item = NewClass>,
         subjects: impl Iterator<Item = NewSubject>,
+        occupancies: impl Iterator<Item = NewOccupancySeed>,
     ) {
         classrooms.for_each(|c| self._classroom_add(c));
         users.for_each(|u| {
@@ -151,6 +159,51 @@ impl Database for JSONDatabase {
             for subject_id in &subject_ids {
                 self._subject_add_student(*subject_id, student_id);
             }
+        }
+
+        for new_occupancy in occupancies {
+            let classroom_id = self
+                .classrooms
+                .iter()
+                .find(|(_, c)| c.name == new_occupancy.classroom_name)
+                .expect("classroom should exist")
+                .0;
+
+            let subject_id = self
+                .subjects
+                .iter()
+                .find(|(_, s)| s.name == new_occupancy.subject_name)
+                .expect("subject should exist")
+                .0;
+
+            let teacher_id = self
+                .users
+                .iter()
+                .filter(|(_, u)| match u.kind {
+                    UserKind::Student(_) => false,
+                    UserKind::Administrator => false,
+                    UserKind::Teacher(_) => true,
+                })
+                .find(|(_, u)| {
+                    u.first_name == new_occupancy.teacher_first_name
+                        && u.last_name == new_occupancy.teacher_last_name
+                })
+                .expect("teacher should exist")
+                .1
+                .id;
+
+            let occupancy = NewOccupancy {
+                classroom_id: Some(*classroom_id),
+                group_number: new_occupancy.group_number,
+                subject_id: Some(*subject_id),
+                teacher_id,
+                start_datetime: new_occupancy.start_datetime,
+                end_datetime: new_occupancy.end_datetime,
+                occupancy_type: new_occupancy.occupancy_type,
+                name: new_occupancy.name,
+            };
+
+            self._add_occupancy(occupancy);
         }
 
         self.persist().expect("could not save DB");
@@ -575,6 +628,13 @@ impl Database for JSONDatabase {
             .expect("student subject should exist")
             .group_number
     }
+
+    fn occupancies_list(&self, from: u64, to: u64) -> Vec<&Occupancy> {
+        self.occupancies
+            .values()
+            .filter(|o| o.start_datetime >= from && o.end_datetime <= to)
+            .collect()
+    }
 }
 
 impl JSONDatabase {
@@ -758,6 +818,23 @@ impl JSONDatabase {
         } else {
             false
         }
+    }
+
+    fn _add_occupancy(&mut self, occupancy: NewOccupancy) {
+        let occupancy = Occupancy {
+            id: self.next_occupancy_id,
+            classroom_id: occupancy.classroom_id,
+            group_number: occupancy.group_number,
+            subject_id: occupancy.subject_id,
+            teacher_id: occupancy.teacher_id,
+            start_datetime: occupancy.start_datetime,
+            end_datetime: occupancy.end_datetime,
+            occupancy_type: occupancy.occupancy_type,
+            name: occupancy.name,
+        };
+
+        self.occupancies.insert(self.next_occupancy_id, occupancy);
+        self.next_occupancy_id += 1;
     }
 }
 

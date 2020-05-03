@@ -4,8 +4,8 @@ use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 use super::{
     globals::{
-        deserialize_some, AccountCreatedResponse, PaginatedQueryableListRequest,
-        SimpleSuccessResponse,
+        deserialize_some, AccountCreatedResponse, OccupanciesListResponse, OccupanciesRequest,
+        PaginatedQueryableListRequest, SimpleSuccessResponse,
     },
     ErrorCode, FailureResponse,
 };
@@ -73,12 +73,21 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(delayed(db))
         .boxed();
 
+    let occupancies_get_route = warp::path!("api" / "teachers" / u32 / "occupancies")
+        .and(warp::get())
+        .and(with_db(db.clone()))
+        .and(warp::query::<OccupanciesRequest>())
+        .and_then(occupancies_get)
+        .and(delayed(db))
+        .boxed();
+
     list_route
         .or(create_route)
         .or(delete_route)
         .or(get_route)
         .or(update_route)
         .or(subjects_get_route)
+        .or(occupancies_get_route)
 }
 
 #[derive(Serialize)]
@@ -441,4 +450,34 @@ async fn subjects_get(id: u32, db: Db) -> Result<impl warp::Reply, std::convert:
         }),
         StatusCode::OK,
     ));
+}
+
+async fn occupancies_get(
+    id: u32,
+    db: Db,
+    request: OccupanciesRequest,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let db = db.lock().await;
+
+    if db.user_get_teacher_by_id(id).is_none() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+            StatusCode::NOT_FOUND,
+        ));
+    }
+
+    let occupancies_list = db.occupancies_list(request.start, request.end);
+
+    let occupancies_list = occupancies_list
+        .into_iter()
+        .filter(|o| o.teacher_id == id)
+        .collect();
+
+    let response =
+        OccupanciesListResponse::from_list(&db, occupancies_list, request.occupancies_per_day);
+
+    Ok(warp::reply::with_status(
+        warp::reply::json(&response),
+        StatusCode::OK,
+    ))
 }

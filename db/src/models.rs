@@ -100,3 +100,27 @@ pub struct StudentSubject {
     pub student_id: u32,
     pub group_number: u32,
 }
+
+#[derive(Deserialize, Serialize)]
+pub struct Occupancy {
+    pub id: u32,
+    pub classroom_id: Option<u32>,
+    pub group_number: Option<u32>,
+    pub subject_id: Option<u32>,
+    pub teacher_id: u32,
+    pub start_datetime: u64,
+    pub end_datetime: u64,
+    pub occupancy_type: OccupancyType,
+    pub name: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OccupancyType {
+    CM,
+    TD,
+    TP,
+    Projet,
+    Administration,
+    External,
+}

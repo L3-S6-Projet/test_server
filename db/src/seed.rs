@@ -2,8 +2,8 @@ use super::{
     models::{Rank, StudentInformations, TeacherInformations, UserKind},
     username_from_name, ClassLevel, Database, NewClass, NewClassroom, NewSubject, NewUser,
 };
-use crate::assets::{Event, StudentName};
-use crate::utils::UniqueExt;
+use crate::assets::{Event, EventType, StudentName};
+use crate::{models::OccupancyType, utils::UniqueExt, NewOccupancySeed};
 use rand::{self, Rng};
 
 pub fn seed_db<D: Database>(db: &mut D) {
@@ -17,6 +17,40 @@ pub fn seed_db<D: Database>(db: &mut D) {
     let students = test_students(&student_names);
     let subjects = test_subjects(&events);
 
+    let mut occupancies: Vec<NewOccupancySeed> = Vec::new();
+
+    for event in events {
+        let professor = match event.professor {
+            Some(p) => p,
+            None => continue,
+        };
+
+        let (lastname, firstname) = {
+            let mut parts = professor.splitn(2, " ");
+            (parts.next().unwrap(), parts.next().unwrap())
+        };
+
+        occupancies.push(NewOccupancySeed {
+            classroom_name: event.location,
+            group_number: match event.event_type {
+                EventType::CM | EventType::Projet => None,
+                EventType::TD | EventType::TP => Some(0),
+            },
+            start_datetime: event.start as u64,
+            end_datetime: event.end as u64,
+            occupancy_type: match event.event_type {
+                EventType::CM => OccupancyType::CM,
+                EventType::Projet => OccupancyType::Projet,
+                EventType::TD => OccupancyType::TD,
+                EventType::TP => OccupancyType::TP,
+            },
+            subject_name: event.subject,
+            teacher_first_name: firstname.to_string(),
+            teacher_last_name: lastname.to_string(),
+            name: event.name,
+        });
+    }
+
     db.seed(
         users
             .into_iter()
@@ -25,6 +59,7 @@ pub fn seed_db<D: Database>(db: &mut D) {
         classrooms.into_iter(),
         classes.into_iter(),
         subjects.into_iter(),
+        occupancies.into_iter(),
     );
 }
 

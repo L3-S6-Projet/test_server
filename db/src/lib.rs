@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::{sync::Arc, time::Duration};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 
 mod assets;
 mod json;
@@ -9,11 +9,12 @@ mod seed;
 mod utils;
 
 use json::JSONDatabase;
-use models::{Class, ClassLevel, Classroom, Subject, User, UserKind};
+use models::{Class, ClassLevel, Classroom, Occupancy, OccupancyType, Subject, User, UserKind};
 
 pub const PAGE_SIZE: usize = 10;
 
 pub type Db = Arc<Mutex<JSONDatabase>>;
+pub type LockedDb<'a> = MutexGuard<'a, JSONDatabase>;
 
 pub fn new_db(filename: String) -> Db {
     Arc::new(Mutex::new(JSONDatabase::new(filename)))
@@ -28,6 +29,7 @@ pub trait Database {
         classrooms: impl Iterator<Item = NewClassroom>,
         classes: impl Iterator<Item = NewClass>,
         subjects: impl Iterator<Item = NewSubject>,
+        occupancies: impl Iterator<Item = NewOccupancySeed>,
     );
     fn dump_as_json(&self) -> Result<String, serde_json::Error>;
 
@@ -118,6 +120,8 @@ pub trait Database {
     fn student_group(&self, student_id: u32, subject_id: u32) -> u32;
 
     fn distribute_subject_groups(&mut self, subject_id: u32);
+
+    fn occupancies_list(&self, from: u64, to: u64) -> Vec<&Occupancy>;
 }
 
 pub fn username_from_name(first_name: &str, last_name: &str) -> String {
@@ -221,4 +225,27 @@ pub fn old_group_numbers(student_count: usize, group_count: u32) -> Vec<u32> {
     }
 
     groups
+}
+
+pub struct NewOccupancy {
+    pub classroom_id: Option<u32>,
+    pub group_number: Option<u32>,
+    pub subject_id: Option<u32>,
+    pub teacher_id: u32,
+    pub start_datetime: u64,
+    pub end_datetime: u64,
+    pub occupancy_type: OccupancyType,
+    pub name: String,
+}
+
+pub struct NewOccupancySeed {
+    pub classroom_name: String,
+    pub group_number: Option<u32>,
+    pub subject_name: String,
+    pub teacher_first_name: String,
+    pub teacher_last_name: String,
+    pub start_datetime: u64,
+    pub end_datetime: u64,
+    pub occupancy_type: OccupancyType,
+    pub name: String,
 }

@@ -8,7 +8,7 @@
 - [x] DELETE /teachers
 - [x] GET    /teachers/{id}
 - [x] PUT    /teachers/{id}
-- [ ] GET    /teachers/{id}/occupancies
+- [x] GET    /teachers/{id}/occupancies
 - [x] GET    /teachers/{id}/subjects
 
 - [x] GET    /classrooms
@@ -16,14 +16,14 @@
 - [x] DELETE /classrooms
 - [x] GET    /classrooms/{id}
 - [x] PUT    /classrooms/{id}
-- [ ] GET    /classrooms/{id}/occupancies
+- [x] GET    /classrooms/{id}/occupancies
 
 - [x] GET    /classes
 - [x] POST   /classes
 - [x] DELETE /classes
 - [x] GET    /classes/{id}
 - [x] PUT    /classes/{id}
-- [ ] GET    /classes/{id}/occupancies
+- [x] GET    /classes/{id}/occupancies
 
 - [x] GET    /students
 - [x] POST   /students
@@ -31,7 +31,7 @@
 - [x] GET    /students/{id}
 - [x] PUT    /students/{id}
 - [ ] GET    /students/{id}/occupancies
-- [x] GET    /students/{id}/subjects
+- [ ] GET    /students/{id}/subjects
 
 - [x] GET    /subjects
 - [x] POST   /subjects
@@ -44,7 +44,7 @@
 - [x] POST   /subjects/{id}/groups
 - [x] DELETE /subjects/{id}/groups
 
-- [ ] GET    /occupancies
+- [x] GET    /occupancies
 
 - [ ] GET    /profile/last-occupancies-modifications
 - [ ] POST   /subjects/{id}/occupancies

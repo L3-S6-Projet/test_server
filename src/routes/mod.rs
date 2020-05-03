@@ -7,6 +7,7 @@ mod class;
 mod classroom;
 mod globals;
 mod manage;
+mod occupancy;
 mod profile;
 mod student;
 mod subject;
@@ -23,4 +24,5 @@ pub fn routes(db: &Db) -> impl Filter<Extract = impl Reply, Error = Rejection> +
         .or(teacher::routes(db))
         .or(student::routes(db))
         .or(subject::routes(db))
+        .or(occupancy::routes(db))
 }

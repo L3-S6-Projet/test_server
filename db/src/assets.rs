@@ -10,6 +10,16 @@ pub struct Event {
     pub description: String,
     pub professor: Option<String>,
     pub subject: String,
+    #[serde(rename = "type")]
+    pub event_type: EventType,
+}
+
+#[derive(Deserialize, Debug)]
+pub enum EventType {
+    CM,
+    TD,
+    TP,
+    Projet,
 }
 
 impl Event {
