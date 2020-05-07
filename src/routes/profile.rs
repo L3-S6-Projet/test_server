@@ -4,7 +4,7 @@ use warp::{http::StatusCode, Filter, Rejection, Reply};
 use super::globals::{ErrorCode, FailureResponse, SimpleSuccessResponse};
 use db::Database;
 use db::{
-    models::{Modification, ModificationOccupancy, ModificationType, OccupancyType},
+    models::{ModificationType, OccupancyType},
     Db,
 };
 use filters::{authed, delayed, with_db, Malformed, Unauthorized};
@@ -107,12 +107,28 @@ async fn put_profile(
 }
 
 #[derive(Serialize)]
-struct LastOccupanciesModifications<'a> {
+struct LastOccupanciesModificationsResponse {
     status: &'static str,
-    modifications: Vec<&'a Modification>,
+    modifications: Vec<ModificationResponse>,
 }
 
-// TODO: RETURN NAMES INSTEAD OF IDS
+#[derive(Deserialize, Serialize, Clone)]
+pub struct ModificationResponse {
+    pub modification_type: ModificationType,
+    pub modification_timestamp: u64,
+    pub occupancy: ModificationOccupancyResponse,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct ModificationOccupancyResponse {
+    pub subject_name: Option<String>,
+    pub class_name: Option<String>,
+    pub occupancy_type: OccupancyType,
+    pub occupancy_start: u64,
+    pub occupancy_end: u64,
+    pub previous_occupancy_start: u64,
+    pub previous_occupancy_end: u64,
+}
 
 async fn last_occupancies_modifications(
     username: String,
@@ -120,24 +136,38 @@ async fn last_occupancies_modifications(
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let db = db.lock().await;
     let user = db.user_get(&username).expect("should be a valid reference");
-    Ok(warp::reply::json(&LastOccupanciesModifications {
+
+    let modifications = db.last_occupancies_modifications(user.id);
+
+    Ok(warp::reply::json(&LastOccupanciesModificationsResponse {
         status: "success",
-        modifications: db.last_occupancies_modifications(user.id),
+        modifications: modifications
+            .iter()
+            .map(|m| {
+                let class = m
+                    .occupancy
+                    .class_id
+                    .and_then(|class_id| db.class_get(class_id));
+
+                let subject = m
+                    .occupancy
+                    .subject_id
+                    .and_then(|subject_id| db.subject_get(subject_id));
+
+                ModificationResponse {
+                    modification_type: m.modification_type.clone(),
+                    modification_timestamp: m.modification_timestamp,
+                    occupancy: ModificationOccupancyResponse {
+                        subject_name: subject.map(|s| s.name.to_string()),
+                        class_name: class.map(|c| c.name.to_string()),
+                        occupancy_type: m.occupancy.occupancy_type.clone(),
+                        occupancy_start: m.occupancy.occupancy_start,
+                        occupancy_end: m.occupancy.occupancy_end,
+                        previous_occupancy_start: m.occupancy.previous_occupancy_start,
+                        previous_occupancy_end: m.occupancy.previous_occupancy_end,
+                    },
+                }
+            })
+            .collect(),
     }))
-    /*Ok(warp::reply::json(&LastOccupanciesModifications {
-        status: "success",
-        modifications: vec![Modification {
-            modification_type: ModificationType::Create,
-            modification_timestamp: 1588830876,
-            occupancy: ModificationOccupancy {
-                subject_name: "TEST".to_string(),
-                class_name: "FAKE CLASS".to_string(),
-                occupancy_type: OccupancyType::CM,
-                occupancy_start: 1588830676,
-                occupancy_end: 1588830776,
-                previous_occupancy_start: 1588830676,
-                previous_occupancy_end: 1588830776,
-            },
-        }],
-    }))*/
 }

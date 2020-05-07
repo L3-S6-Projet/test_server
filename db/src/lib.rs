@@ -15,8 +15,9 @@ use models::{
 
 pub const PAGE_SIZE: usize = 10;
 
-pub type Db = Arc<Mutex<JSONDatabase>>;
-pub type LockedDb<'a> = MutexGuard<'a, JSONDatabase>;
+pub type ConcreteDb = JSONDatabase;
+pub type Db = Arc<Mutex<ConcreteDb>>;
+pub type LockedDb<'a> = MutexGuard<'a, ConcreteDb>;
 
 pub fn new_db(filename: String) -> Db {
     Arc::new(Mutex::new(JSONDatabase::new(filename)))
@@ -24,6 +25,7 @@ pub fn new_db(filename: String) -> Db {
 
 // While the trait is not used at runtime, it allows checking that the impls are complete
 pub trait Database {
+    fn from_file(filename: &str) -> Result<ConcreteDb, std::io::Error>;
     fn reset(&mut self);
     fn seed(
         &mut self,
@@ -126,6 +128,7 @@ pub trait Database {
     fn occupancies_list(&self, from: Option<u64>, to: Option<u64>) -> Vec<&Occupancy>;
     fn occupancies_remove(&mut self, occupancies: &[u32]) -> bool;
     fn occupancies_add(&mut self, occupancy: NewOccupancy);
+    fn occupancies_update(&mut self, id: u32, update: OccupancyUpdate) -> UpdateStatus;
 
     fn classroom_free(&self, classroom_id: u32, from: u64, to: u64) -> bool;
     fn teacher_free(&self, teacher_id: u32, from: u64, to: u64) -> bool;
@@ -266,4 +269,12 @@ pub struct NewOccupancySeed {
     pub end_datetime: u64,
     pub occupancy_type: OccupancyType,
     pub name: String,
+}
+
+#[derive(Deserialize)]
+pub struct OccupancyUpdate {
+    pub classroom_id: Option<u32>,
+    pub start: Option<u64>,
+    pub end: Option<u64>,
+    pub name: Option<String>,
 }

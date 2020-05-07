@@ -1,6 +1,7 @@
-use db::{Database, Db};
+use db::{ConcreteDb, Database, Db};
 use filters::with_db;
 use std::time::Duration;
+use tokio::io::AsyncWriteExt;
 use warp::{Filter, Rejection, Reply};
 
 pub fn routes(db: &Db) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
@@ -37,6 +38,18 @@ pub fn routes(db: &Db) -> impl Filter<Extract = impl Reply, Error = Rejection> +
 
     let swagger_ui_route = warp::path!("swagger").and(warp::get()).and_then(swagger_ui);
 
+    let export_route = warp::path!("api" / "export")
+        .and(warp::get())
+        .and(with_db(db.clone()))
+        .and_then(export)
+        .boxed();
+
+    let import_route = warp::path!("api" / "import")
+        .and(warp::get())
+        .and(with_db(db.clone()))
+        .and_then(import)
+        .boxed();
+
     index_route
         .or(dump_route)
         .or(reset_route)
@@ -44,6 +57,8 @@ pub fn routes(db: &Db) -> impl Filter<Extract = impl Reply, Error = Rejection> +
         .or(set_delay_route)
         .or(swagger_route)
         .or(swagger_ui_route)
+        .or(export_route)
+        .or(import_route)
 }
 
 async fn index() -> Result<impl warp::Reply, warp::Rejection> {
@@ -94,5 +109,32 @@ async fn delay(db: Db) -> Result<impl warp::Reply, std::convert::Infallible> {
 async fn set_delay(delay: u64, db: Db) -> Result<impl warp::Reply, std::convert::Infallible> {
     let mut db = db.lock().await;
     db.delay_set(Duration::from_millis(delay));
+    Ok(warp::reply::json(&"ok".to_string()))
+}
+
+async fn export(db: Db) -> Result<impl warp::Reply, warp::Rejection> {
+    let db = db.lock().await;
+
+    let dump = db.dump_as_json().expect("could not dump");
+
+    let mut output = tokio::fs::File::create("save.json")
+        .await
+        .expect("could not create DB");
+
+    output
+        .write_all(dump.as_bytes())
+        .await
+        .expect("could not persist DB");
+
+    Ok(warp::reply::json(&"ok".to_string()))
+}
+
+async fn import(db: Db) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut db = db.lock().await;
+    let new_db = match ConcreteDb::from_file("save.json") {
+        Ok(db) => db,
+        Err(_) => return Ok(warp::reply::json(&"failed to read file".to_string())),
+    };
+    *db = new_db;
     Ok(warp::reply::json(&"ok".to_string()))
 }

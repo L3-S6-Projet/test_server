@@ -11,7 +11,8 @@ use std::{
 
 use super::{
     models::Class, seed::seed_db, username_from_name, ClassUpdate, ClassroomUpdate, Database,
-    NewClass, NewClassroom, NewOccupancySeed, NewSubject, SubjectUpdate, UpdateStatus, PAGE_SIZE,
+    NewClass, NewClassroom, NewOccupancySeed, NewSubject, OccupancyUpdate, SubjectUpdate,
+    UpdateStatus, PAGE_SIZE,
 };
 use crate::{
     groups,
@@ -65,7 +66,7 @@ pub struct JSONDatabase {
 impl JSONDatabase {
     pub fn new(filename: String) -> Self {
         // Try to read from disk
-        match Self::from_file(&filename) {
+        match Self::from_bincode_file(&filename) {
             Ok(db) => {
                 info!("Database loaded");
                 return db;
@@ -102,7 +103,8 @@ impl JSONDatabase {
 
         db
     }
-    fn from_file(filename: &str) -> Result<Self, std::io::Error> {
+
+    fn from_bincode_file(filename: &str) -> Result<Self, std::io::Error> {
         let contents = {
             let mut file = File::open(filename)?;
             let mut contents = Vec::new();
@@ -138,6 +140,17 @@ impl JSONDatabase {
 }
 
 impl Database for JSONDatabase {
+    fn from_file(filename: &str) -> Result<Self, std::io::Error> {
+        let contents = {
+            let mut file = File::open(filename)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+            contents
+        };
+
+        Ok(serde_json::from_str(&contents)?)
+    }
+
     fn delay_set(&mut self, delay: Duration) {
         self.delay = delay;
         self.set_dirty();
@@ -723,12 +736,59 @@ impl Database for JSONDatabase {
 
         self.set_dirty();
 
+        // TODO: ADD TO MODIFICATION VEC
+
         true
     }
 
     fn occupancies_add(&mut self, occupancy: NewOccupancy) {
         self._add_occupancy(occupancy);
         self.set_dirty();
+    }
+
+    fn occupancies_update(&mut self, id: u32, update: OccupancyUpdate) -> UpdateStatus {
+        let occupancy = match self.occupancies.get_mut(&id) {
+            Some(o) => o,
+            None => {
+                return UpdateStatus {
+                    found: false,
+                    updated: false,
+                }
+            }
+        };
+
+        let mut updated = false;
+
+        if let Some(classroom_id) = update.classroom_id {
+            updated = true;
+            occupancy.classroom_id = Some(classroom_id);
+        }
+
+        if let Some(start) = update.start {
+            updated = true;
+            occupancy.start_datetime = start;
+        }
+
+        if let Some(end) = update.end {
+            updated = true;
+            occupancy.end_datetime = end;
+        }
+
+        if let Some(name) = update.name {
+            updated = true;
+            occupancy.name = name;
+        }
+
+        if updated {
+            self.set_dirty();
+        }
+
+        // TODO: add to modification vec
+
+        UpdateStatus {
+            found: true,
+            updated,
+        }
     }
 
     fn classroom_free(&self, classroom_id: u32, from: u64, to: u64) -> bool {

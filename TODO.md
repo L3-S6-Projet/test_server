@@ -6,7 +6,7 @@
 - [x] DELETE /session
 
 - [x] PUT    /profile
-- [ ] GET    /profile/last-occupancies-modifications
+- [x] GET    /profile/last-occupancies-modifications
 - [ ] GET    /profile/feeds/ical
 
 - [x] GET    /teachers
@@ -54,5 +54,5 @@
 - [x] POST   /subjects/{id}/groups/{group_number}/occupancies
 
 - [x] GET    /occupancies
-- [ ] PUT    /occupancies/{id}
+- [x] PUT    /occupancies/{id}
 - [x] DELETE /occupancies/{id}
