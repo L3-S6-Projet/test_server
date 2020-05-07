@@ -20,6 +20,7 @@ struct LoginResponse<'a> {
 
 #[derive(Serialize)]
 struct LoginResponseUser<'a> {
+    id: u32,
     first_name: &'a str,
     last_name: &'a str,
     kind: &'a str,
@@ -53,6 +54,7 @@ async fn post_session(request: LoginRequest, db: Db) -> Result<impl warp::Reply,
             status: "success",
             token: &token,
             user: LoginResponseUser {
+                id: user.id,
                 first_name: &user.first_name,
                 last_name: &user.last_name,
                 kind: match user.kind {
@@ -74,7 +76,7 @@ async fn delete_session(
 
     let (auth_type, token) = {
         let mut parts = authorization.splitn(2, " ");
-        (parts.next().unwrap(), parts.next().unwrap())
+        (parts.next().unwrap_or(""), parts.next().unwrap_or(""))
     };
 
     let logged_out = auth_type.to_ascii_lowercase() == "bearer" && db.auth_logout(&token);

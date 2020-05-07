@@ -8,6 +8,7 @@ use tokio::io::AsyncWriteExt;
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 mod routes;
+mod service;
 
 use db::{new_db, Db};
 use filters::{Forbidden, Malformed, Unauthorized};

@@ -9,6 +9,7 @@ use super::{
     },
     ErrorCode, FailureResponse,
 };
+use crate::service::count_hours;
 use db::{
     group_numbers,
     models::{OccupancyType, StudentInformations, UserKind},
@@ -237,7 +238,14 @@ struct GetResponseStudent<'a> {
     first_name: &'a str,
     last_name: &'a str,
     username: &'a str,
-    // TODO: total_hours + subjects
+    total_hours: u32,
+    subjects: Vec<GetResponseSubject<'a>>,
+}
+
+#[derive(Serialize)]
+struct GetResponseSubject<'a> {
+    name: &'a str,
+    group: String,
 }
 
 async fn get(id: u32, db: Db) -> Result<impl warp::Reply, std::convert::Infallible> {
@@ -247,11 +255,27 @@ async fn get(id: u32, db: Db) -> Result<impl warp::Reply, std::convert::Infallib
     let res_student = match user {
         Some(user) => match &user.kind {
             UserKind::Administrator | UserKind::Teacher(_) => None,
-            UserKind::Student(_informations) => Some(GetResponseStudent {
-                first_name: &user.first_name,
-                last_name: &user.last_name,
-                username: &user.username,
-            }),
+            UserKind::Student(_informations) => {
+                let subjects = db
+                    .student_subjects_with_groups(id)
+                    .iter()
+                    .map(|(subject, group_number)| GetResponseSubject {
+                        name: &subject.name,
+                        group: format!("Groupe {}", group_number + 1),
+                    })
+                    .collect();
+
+                // TODO
+                let total_hours = 0;
+
+                Some(GetResponseStudent {
+                    first_name: &user.first_name,
+                    last_name: &user.last_name,
+                    username: &user.username,
+                    total_hours,
+                    subjects,
+                })
+            }
         },
         None => None,
     };

@@ -602,6 +602,26 @@ impl Database for JSONDatabase {
         subjects
     }
 
+    fn student_subjects_with_groups(&self, student_id: u32) -> Vec<(&Subject, u32)> {
+        let subject_ids: Vec<(u32, u32)> = self
+            .subjects_students
+            .values()
+            .filter(|ss| ss.student_id == student_id)
+            .map(|ss| (ss.subject_id, ss.group_number))
+            .collect();
+
+        let mut subjects = Vec::new();
+
+        for (id, group_number) in subject_ids {
+            subjects.push((
+                self.subject_get(id).expect("subject should exist"),
+                group_number,
+            ));
+        }
+
+        subjects
+    }
+
     fn subject_update(&mut self, id: u32, update: SubjectUpdate) -> UpdateStatus {
         let subject = self.subjects.get_mut(&id);
 

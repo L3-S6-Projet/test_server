@@ -26,6 +26,7 @@ impl FailureResponse {
 }
 
 #[derive(Serialize)]
+#[allow(dead_code)]
 pub enum ErrorCode {
     InvalidCredentials,
     InsufficientAuthorization,
@@ -122,7 +123,13 @@ pub struct OccupanciesListElement<'a> {
 #[derive(Serialize)]
 pub struct OccupanciesListResponse<'a> {
     status: &'static str,
-    occupancies: HashMap<String, Vec<OccupanciesListElement<'a>>>,
+    days: Vec<OccupanciesListItemResponse<'a>>,
+}
+
+#[derive(Serialize)]
+pub struct OccupanciesListItemResponse<'a> {
+    date: String,
+    occupancies: Vec<OccupanciesListElement<'a>>,
 }
 
 impl<'a> OccupanciesListResponse<'a> {
@@ -186,9 +193,18 @@ impl<'a> OccupanciesListResponse<'a> {
             }
         }
 
+        // Re-format occupancies
+        let days = occupancies
+            .into_iter()
+            .map(|(date, vec)| OccupanciesListItemResponse {
+                date,
+                occupancies: vec,
+            })
+            .collect();
+
         Self {
             status: "success",
-            occupancies,
+            days,
         }
     }
 }

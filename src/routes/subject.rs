@@ -152,7 +152,14 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
 struct ListResponse<'a> {
     status: &'static str,
     total: usize,
-    subjects: Vec<&'a db::models::Subject>, // TODO: remove group_count from here
+    subjects: Vec<ListResponseItem<'a>>, // TODO: remove group_count from here
+}
+
+#[derive(Serialize)]
+struct ListResponseItem<'a> {
+    id: u32,
+    class_name: &'a str,
+    name: &'a str,
 }
 
 async fn list(
@@ -164,6 +171,18 @@ async fn list(
 
     let page = request.normalized_page_number();
     let (total, subjects) = db.subject_list(page, request.query.as_deref(), |_| true);
+
+    let subjects = subjects
+        .iter()
+        .map(|s| ListResponseItem {
+            id: s.id,
+            class_name: &db
+                .class_get(s.class_id)
+                .expect("should be a valid reference")
+                .name,
+            name: &s.name,
+        })
+        .collect();
 
     Ok(warp::reply::json(&ListResponse {
         status: "success",
@@ -239,7 +258,7 @@ struct GetResponseTeacher<'a> {
 
 #[derive(Serialize)]
 struct GetResponseGroup {
-    pub number: u32,
+    pub id: u32,
     pub name: String,
     pub count: u32,
 }
@@ -284,7 +303,7 @@ async fn get(id: u32, db: Db) -> Result<impl warp::Reply, std::convert::Infallib
     let groups: Vec<GetResponseGroup> = (0..subject.group_count)
         .zip(group_numbers(total_student_count, subject.group_count))
         .map(|(number, group_count)| GetResponseGroup {
-            number,
+            id: number,
             name: format!("Groupe {}", number + 1),
             count: group_count,
         })
@@ -537,8 +556,8 @@ async fn occupancies_get(
 struct SubjectOccupancyCreationRequest {
     pub classroom_id: Option<u32>,
     pub teacher_id: u32,
-    pub start_datetime: u64,
-    pub end_datetime: u64,
+    pub start: u64,
+    pub end: u64,
     pub occupancy_type: OccupancyType,
     pub name: String,
 }
@@ -586,8 +605,8 @@ async fn occupancies_create(
         group_number: None,
         subject_id: Some(subject_id),
         teacher_id: request.teacher_id,
-        start_datetime: request.start_datetime,
-        end_datetime: request.end_datetime,
+        start_datetime: request.start,
+        end_datetime: request.end,
         occupancy_type: request.occupancy_type,
         name: request.name,
     };
@@ -657,8 +676,8 @@ async fn occupancies_groups_create(
         group_number: Some(group_number),
         subject_id: Some(subject_id),
         teacher_id: request.teacher_id,
-        start_datetime: request.start_datetime,
-        end_datetime: request.end_datetime,
+        start_datetime: request.start,
+        end_datetime: request.end,
         occupancy_type: request.occupancy_type,
         name: request.name,
     };
@@ -720,7 +739,7 @@ fn validate_new_occupancy_base(
             ));
         }
 
-        if !db.classroom_free(classroom_id, request.start_datetime, request.end_datetime) {
+        if !db.classroom_free(classroom_id, request.start, request.end) {
             log::warn!("Trying to create an occupancy but the classroom is not free.");
 
             return Some(warp::reply::with_status(
@@ -731,7 +750,7 @@ fn validate_new_occupancy_base(
     }
 
     // Check end_datetime >= start_datetime
-    if request.end_datetime < request.start_datetime {
+    if request.end < request.start {
         log::warn!(
             "Trying to create an occupancy but the end_datetime is before the start_datetime."
         );
@@ -743,11 +762,7 @@ fn validate_new_occupancy_base(
     }
 
     // Check that the teacher is free
-    if !db.teacher_free(
-        request.teacher_id,
-        request.start_datetime,
-        request.end_datetime,
-    ) {
+    if !db.teacher_free(request.teacher_id, request.start, request.end) {
         log::warn!("Trying to create an occupancy, but the teacher is not free.");
 
         return Some(warp::reply::with_status(

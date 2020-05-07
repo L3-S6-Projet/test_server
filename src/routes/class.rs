@@ -8,8 +8,9 @@ use super::{
     },
     ErrorCode, FailureResponse,
 };
+use crate::service::service_value;
 use db::{
-    models::{Class, ClassLevel},
+    models::{Class, ClassLevel, Occupancy},
     ClassUpdate, Database, Db, NewClass,
 };
 use filters::{authed_is_of_kind, delayed, with_db, PossibleUserKind};
@@ -136,7 +137,7 @@ async fn delete(
 struct GetResponse<'a> {
     status: &'static str,
     class: GetResponseClass<'a>,
-    total_service: u32, // TODO
+    total_service: u32,
 }
 
 #[derive(Serialize)]
@@ -150,17 +151,41 @@ async fn get(id: u32, db: Db) -> Result<impl warp::Reply, std::convert::Infallib
     let class = db.class_get(id);
 
     match class {
-        Some(class) => Ok(warp::reply::with_status(
-            warp::reply::json(&GetResponse {
-                status: "success",
-                class: GetResponseClass {
-                    name: &class.name,
-                    level: &class.level,
-                },
-                total_service: 0,
-            }),
-            StatusCode::OK,
-        )),
+        Some(class) => {
+            // Total service: somme de tous les cours
+            let occupancies_list = db.occupancies_list(None, None);
+
+            let occupancies_list: Vec<&Occupancy> = occupancies_list
+                .into_iter()
+                .filter(|o| {
+                    let subject_id = match o.subject_id {
+                        Some(i) => i,
+                        None => return false,
+                    };
+
+                    let subject = match db.subject_get(subject_id) {
+                        Some(s) => s,
+                        None => return false,
+                    };
+
+                    subject.class_id == id
+                })
+                .collect();
+
+            let total_service = service_value(occupancies_list.as_slice()) as u32;
+
+            Ok(warp::reply::with_status(
+                warp::reply::json(&GetResponse {
+                    status: "success",
+                    class: GetResponseClass {
+                        name: &class.name,
+                        level: &class.level,
+                    },
+                    total_service,
+                }),
+                StatusCode::OK,
+            ))
+        }
         None => Ok(warp::reply::with_status(
             warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
             StatusCode::NOT_FOUND,

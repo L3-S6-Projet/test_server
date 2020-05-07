@@ -9,9 +9,10 @@ use super::{
     },
     ErrorCode, FailureResponse,
 };
+use crate::service::{count_hours, service_value};
 use db::{
     group_numbers,
-    models::{Rank, TeacherInformations, UserKind},
+    models::{Occupancy, Rank, TeacherInformations, UserKind},
     Database, Db, NewUser,
 };
 use filters::{authed_is_of_kind, delayed, with_db, PossibleUserKind};
@@ -156,6 +157,8 @@ async fn create(
     db: Db,
     request: NewTeacher,
 ) -> Result<impl warp::Reply, warp::Rejection> {
+    // TODO: fixme(bug): a user with the same username as the genereated one would be erased
+
     let mut db = db.lock().await;
 
     let mut rng = rand::thread_rng();
@@ -232,8 +235,19 @@ struct GetResponseTeacher<'a> {
     email: Option<&'a str>,
     phone_number: Option<&'a str>,
     rank: &'a Rank,
-    //total_service: u32, // TODO: total_service
-    // TODO: services
+    total_service: u32,
+    services: Vec<GetResponseService<'a>>,
+}
+
+#[derive(Serialize)]
+struct GetResponseService<'a> {
+    class: &'a str,
+    cm: u32,
+    projet: u32,
+    td: u32,
+    tp: u32,
+    administration: u32,
+    external: u32,
 }
 
 async fn get(id: u32, db: Db) -> Result<impl warp::Reply, std::convert::Infallible> {
@@ -243,14 +257,60 @@ async fn get(id: u32, db: Db) -> Result<impl warp::Reply, std::convert::Infallib
     let res_teacher = match user {
         Some(user) => match &user.kind {
             UserKind::Administrator => None,
-            UserKind::Teacher(informations) => Some(GetResponseTeacher {
-                first_name: &user.first_name,
-                last_name: &user.last_name,
-                username: &user.username,
-                email: informations.email.as_deref(),
-                phone_number: informations.phone_number.as_deref(),
-                rank: &informations.rank,
-            }),
+            UserKind::Teacher(informations) => {
+                // Total service: somme de tous les cours
+                let occupancies_list = db.occupancies_list(None, None);
+
+                let occupancies_list: Vec<&Occupancy> = occupancies_list
+                    .into_iter()
+                    .filter(|o| o.teacher_id == id)
+                    .collect();
+
+                let total_service = service_value(occupancies_list.as_slice()) as u32;
+
+                // Find all classes that the teacher teachers
+                let subjects = db.teacher_subjects(id);
+
+                let services = subjects
+                    .iter()
+                    .map(|subject| {
+                        let occupancies_list = db.occupancies_list(None, None);
+
+                        let occupancies_list: Vec<&Occupancy> = occupancies_list
+                            .into_iter()
+                            .filter(|o| o.teacher_id == id && o.subject_id == Some(subject.id))
+                            .collect();
+
+                        let hours = count_hours(occupancies_list.as_slice());
+
+                        let class_name = &db
+                            .class_get(subject.class_id)
+                            .expect("should be a valid reference")
+                            .name;
+
+                        GetResponseService {
+                            class: class_name,
+                            cm: hours.cm,
+                            projet: hours.projet,
+                            td: hours.td,
+                            tp: hours.tp,
+                            administration: hours.administration,
+                            external: hours.external,
+                        }
+                    })
+                    .collect();
+
+                Some(GetResponseTeacher {
+                    first_name: &user.first_name,
+                    last_name: &user.last_name,
+                    username: &user.username,
+                    email: informations.email.as_deref(),
+                    phone_number: informations.phone_number.as_deref(),
+                    rank: &informations.rank,
+                    total_service,
+                    services,
+                })
+            }
             UserKind::Student(_) => None,
         },
         None => None,
@@ -332,11 +392,7 @@ async fn update(
 
     Ok(warp::reply::with_status(
         warp::reply::json(&SimpleSuccessResponse::new()),
-        if updated {
-            StatusCode::OK
-        } else {
-            StatusCode::NO_CONTENT
-        },
+        StatusCode::OK,
     ))
 }
 

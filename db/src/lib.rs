@@ -121,6 +121,7 @@ pub trait Database {
     fn teacher_unset_teaches(&mut self, teacher_id: u32, subject_id: u32);
     fn teacher_subjects(&self, teacher_id: u32) -> Vec<&Subject>;
     fn student_subjects(&self, student_id: u32) -> Vec<&Subject>;
+    fn student_subjects_with_groups(&self, student_id: u32) -> Vec<(&Subject, u32)>;
     fn student_group(&self, student_id: u32, subject_id: u32) -> u32;
 
     fn distribute_subject_groups(&mut self, subject_id: u32);
@@ -167,7 +168,6 @@ pub struct NewClassroom {
 #[derive(Deserialize)]
 pub struct ClassroomUpdate {
     pub name: Option<String>,
-    pub capacity: u16,
 }
 
 pub struct UpdateStatus {
@@ -196,7 +196,7 @@ pub struct NewSubject {
 
 #[derive(Deserialize, Debug)]
 pub struct SubjectUpdate {
-    pub class_id: Option<u32>,
+    pub class_id: Option<u32>, // TODO: remove
     pub name: Option<String>,
     pub teacher_in_charge_id: Option<u32>,
 }
