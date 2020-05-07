@@ -2,8 +2,12 @@ use bimap::BiMap;
 use log::{error, info};
 use rand::{self, Rng};
 use serde::{Deserialize, Serialize};
-use std::io::{Read, Write};
-use std::{collections::HashMap, fs::File, time::Duration};
+use std::io::Read;
+use std::{
+    collections::HashMap,
+    fs::File,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use super::{
     models::Class, seed::seed_db, username_from_name, ClassUpdate, ClassroomUpdate, Database,
@@ -11,12 +15,33 @@ use super::{
 };
 use crate::{
     groups,
-    models::{Classroom, Occupancy, StudentSubject, Subject, SubjectTeacher, User, UserKind},
+    models::{
+        Classroom, Modification, ModificationOccupancy, ModificationType, Occupancy,
+        StudentSubject, Subject, SubjectTeacher, User, UserKind,
+    },
     NewOccupancy,
 };
 
+#[derive(Debug)]
+struct BincodeError {
+    kind: bincode::Error,
+}
+
+impl std::fmt::Display for BincodeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.kind.fmt(f)
+    }
+}
+
+impl std::error::Error for BincodeError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct JSONDatabase {
+    dirty: bool,
     filename: String,
     delay: Duration,
     users: HashMap<String, User>,
@@ -27,6 +52,7 @@ pub struct JSONDatabase {
     subjects_teachers: HashMap<u32, SubjectTeacher>,
     subjects_students: HashMap<u32, StudentSubject>,
     occupancies: HashMap<u32, Occupancy>,
+    modifications: HashMap<u32, Vec<Modification>>,
     next_user_id: u32,
     next_classroom_id: u32,
     next_class_id: u32,
@@ -51,6 +77,7 @@ impl JSONDatabase {
         };
 
         let mut db = Self {
+            dirty: true,
             filename,
             delay: Duration::from_millis(0),
             users: HashMap::new(),
@@ -61,6 +88,7 @@ impl JSONDatabase {
             subjects_teachers: HashMap::new(),
             subjects_students: HashMap::new(),
             occupancies: HashMap::new(),
+            modifications: HashMap::new(),
             next_user_id: 0,
             next_classroom_id: 0,
             next_class_id: 0,
@@ -77,25 +105,42 @@ impl JSONDatabase {
     fn from_file(filename: &str) -> Result<Self, std::io::Error> {
         let contents = {
             let mut file = File::open(filename)?;
-            let mut contents = String::new();
-            file.read_to_string(&mut contents)?;
+            let mut contents = Vec::new();
+            file.read_to_end(&mut contents)?;
             contents
         };
 
-        Ok(serde_json::from_str(&contents)?)
+        match bincode::deserialize(&contents[..]) {
+            Ok(deserialized) => Ok(deserialized),
+            Err(e) => Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                BincodeError { kind: e },
+            )),
+        }
     }
 
-    pub fn persist(&self) -> Result<(), std::io::Error> {
-        let mut output = File::create(&self.filename)?;
-        write!(output, "{}", self.dump_as_json()?)?;
-        Ok(())
+    pub fn set_dirty(&mut self) {
+        self.dirty = true;
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+
+    pub fn dirty_to_bincode(&mut self) -> Vec<u8> {
+        /*let mut output = File::create(&self.filename)?;
+        write!(output, "{}", self.dump_as_json()?)?;*/
+
+        self.dirty = false;
+
+        bincode::serialize(self).expect("could not serialize")
     }
 }
 
 impl Database for JSONDatabase {
     fn delay_set(&mut self, delay: Duration) {
         self.delay = delay;
-        self.persist().expect("could not save DB")
+        self.set_dirty();
     }
 
     fn delay_get(&self) -> Duration {
@@ -103,6 +148,7 @@ impl Database for JSONDatabase {
     }
 
     fn reset(&mut self) {
+        self.dirty = true;
         self.delay = Duration::from_millis(0);
         self.users.clear();
         self.tokens.clear();
@@ -112,6 +158,7 @@ impl Database for JSONDatabase {
         self.subjects_teachers.clear();
         self.subjects_students.clear();
         self.occupancies.clear();
+        self.modifications.clear();
         self.next_user_id = 0;
         self.next_classroom_id = 0;
         self.next_class_id = 0;
@@ -120,10 +167,8 @@ impl Database for JSONDatabase {
         self.next_subject_students_id = 0;
         self.next_occupancy_id = 0;
 
-        // Will call self.seed()
+        // Will call self.seed(), which calls persist
         seed_db(self);
-
-        self.persist().expect("could not save DB");
     }
 
     fn seed(
@@ -206,7 +251,7 @@ impl Database for JSONDatabase {
             self._add_occupancy(occupancy);
         }
 
-        self.persist().expect("could not save DB");
+        self.set_dirty();
     }
 
     fn dump_as_json(&self) -> Result<String, serde_json::Error> {
@@ -214,26 +259,33 @@ impl Database for JSONDatabase {
     }
 
     fn auth_login(&mut self, username: &str, password: &str) -> Option<(&User, String)> {
-        let user = self.users.get(username)?;
+        let user_password = self.users.get(username).map(|u| u.password.to_string())?;
 
-        if password == user.password {
-            let mut rng = rand::thread_rng();
-            let token: String = std::iter::repeat(())
-                .map(|()| rng.sample(rand::distributions::Alphanumeric))
-                .take(25)
-                .collect();
-
-            self.tokens.insert(token.clone(), user.username.clone());
-            self.persist().expect("could not save DB");
-            Some((user, token))
-        } else {
-            None
+        if password != user_password {
+            return None;
         }
+
+        let mut rng = rand::thread_rng();
+
+        let token: String = std::iter::repeat(())
+            .map(|()| rng.sample(rand::distributions::Alphanumeric))
+            .take(25)
+            .collect();
+
+        self.tokens.insert(token.clone(), username.to_string());
+        self.set_dirty();
+
+        let user = self
+            .users
+            .get(username)
+            .expect("should be a valid reference");
+
+        Some((user, token))
     }
 
     fn auth_logout(&mut self, token: &str) -> bool {
         let removed = self.tokens.remove_by_left(&token.to_string()).is_some();
-        self.persist().expect("could not save DB");
+        self.set_dirty();
         removed
     }
 
@@ -258,7 +310,7 @@ impl Database for JSONDatabase {
 
     fn classroom_add(&mut self, classroom: NewClassroom) {
         self._classroom_add(classroom);
-        self.persist().expect("could not save DB");
+        self.set_dirty();
     }
 
     fn classroom_remove(&mut self, classrooms: &[u32]) -> bool {
@@ -270,6 +322,8 @@ impl Database for JSONDatabase {
         classrooms.iter().for_each(|id| {
             self.classrooms.remove(id);
         });
+
+        self.set_dirty();
 
         true
     }
@@ -283,7 +337,7 @@ impl Database for JSONDatabase {
             if let Some(new_name) = update.name {
                 classroom.name = new_name;
                 updated = true;
-                self.persist().expect("could not save DB");
+                self.set_dirty();
             }
 
             UpdateStatus {
@@ -300,7 +354,7 @@ impl Database for JSONDatabase {
 
     fn user_add(&mut self, user: super::NewUser) -> &User {
         let username = self._user_add(user);
-        self.persist().expect("could not save DB");
+        self.set_dirty();
         self.users.get(&username).expect("user was just added")
     }
 
@@ -314,7 +368,7 @@ impl Database for JSONDatabase {
 
     fn user_update(&mut self, user: User) {
         self.users.insert(user.username.clone(), user);
-        self.persist().expect("could not save DB");
+        self.set_dirty();
     }
 
     fn user_list(
@@ -353,13 +407,13 @@ impl Database for JSONDatabase {
 
         self.users.retain(|_, u| !users.contains(&u.id));
         // TODO: persist
-        self.persist().expect("could not save DB");
+        self.set_dirty();
         true
     }
 
     fn class_add(&mut self, class: NewClass) {
         self._class_add(class);
-        self.persist().expect("could not save DB");
+        self.set_dirty();
     }
 
     fn class_list(&self, page: usize, query: Option<&str>) -> (usize, Vec<&Class>) {
@@ -381,6 +435,8 @@ impl Database for JSONDatabase {
         classes.iter().for_each(|id| {
             self.classes.remove(id);
         });
+
+        self.set_dirty();
 
         true
     }
@@ -406,7 +462,7 @@ impl Database for JSONDatabase {
             }
 
             if updated {
-                self.persist().expect("could not save DB");
+                self.set_dirty();
             }
 
             UpdateStatus {
@@ -438,7 +494,7 @@ impl Database for JSONDatabase {
 
     fn subject_add(&mut self, subject: NewSubject) {
         self._subject_add(subject);
-        self.persist().expect("could not save DB");
+        self.set_dirty();
     }
 
     fn subject_remove(&mut self, subjects: &[u32]) -> bool {
@@ -452,6 +508,8 @@ impl Database for JSONDatabase {
         subjects.iter().for_each(|id| {
             self.subjects.remove(id);
         });
+
+        self.set_dirty();
 
         true
     }
@@ -479,7 +537,7 @@ impl Database for JSONDatabase {
 
     fn subject_add_student(&mut self, subject_id: u32, student_id: u32) {
         if self._subject_add_student(subject_id, student_id) {
-            self.persist().expect("could not save DB");
+            self.set_dirty();
         }
     }
 
@@ -566,7 +624,7 @@ impl Database for JSONDatabase {
             }
 
             if updated {
-                self.persist().expect("could not save DB");
+                self.set_dirty();
             }
 
             UpdateStatus {
@@ -587,7 +645,7 @@ impl Database for JSONDatabase {
             .get_mut(&subject_id)
             .expect("subject shoulld exist");
         subject.group_count += 1;
-        self.persist().expect("could not save DB");
+        self.set_dirty();
     }
 
     fn subject_remove_group(&mut self, subject_id: u32) -> bool {
@@ -598,7 +656,7 @@ impl Database for JSONDatabase {
 
         if subject.group_count >= 2 {
             subject.group_count -= 1;
-            self.persist().expect("could not save DB");
+            self.set_dirty();
             true
         } else {
             false
@@ -608,17 +666,17 @@ impl Database for JSONDatabase {
     /// Adds a teacher to a subject
     fn teacher_set_teaches(&mut self, teacher_id: u32, subject_id: u32) {
         self._set_teaches(subject_id, teacher_id, None);
-        self.persist().expect("could not save DB");
+        self.set_dirty();
     }
 
     fn teacher_unset_teaches(&mut self, teacher_id: u32, subject_id: u32) {
         self._unset_teaches(subject_id, teacher_id);
-        self.persist().expect("could not save DB");
+        self.set_dirty();
     }
 
     fn distribute_subject_groups(&mut self, subject_id: u32) {
         self._distribute_subject_groups(subject_id);
-        self.persist().expect("could not save DB");
+        self.set_dirty();
     }
 
     fn student_group(&self, student_id: u32, subject_id: u32) -> u32 {
@@ -629,11 +687,104 @@ impl Database for JSONDatabase {
             .group_number
     }
 
-    fn occupancies_list(&self, from: u64, to: u64) -> Vec<&Occupancy> {
+    fn occupancies_list(&self, from: Option<u64>, to: Option<u64>) -> Vec<&Occupancy> {
         self.occupancies
             .values()
-            .filter(|o| o.start_datetime >= from && o.end_datetime <= to)
+            .filter(|o| {
+                if let Some(from) = from {
+                    if o.start_datetime < from {
+                        return false;
+                    }
+                }
+
+                if let Some(to) = to {
+                    if o.end_datetime > to {
+                        return false;
+                    }
+                }
+
+                true
+            })
             .collect()
+    }
+
+    fn occupancies_remove(&mut self, occupancies: &[u32]) -> bool {
+        // Check first
+        if !occupancies
+            .iter()
+            .all(|id| self.occupancies.contains_key(id))
+        {
+            return false;
+        }
+
+        occupancies.iter().for_each(|id| {
+            self.occupancies.remove(id);
+        });
+
+        self.set_dirty();
+
+        true
+    }
+
+    fn occupancies_add(&mut self, occupancy: NewOccupancy) {
+        self._add_occupancy(occupancy);
+        self.set_dirty();
+    }
+
+    fn classroom_free(&self, classroom_id: u32, from: u64, to: u64) -> bool {
+        // Find an occupancy that is in this classroom, and between from and to
+        !self.occupancies.values().any(|o| {
+            o.classroom_id == Some(classroom_id) && o.start_datetime >= from && o.end_datetime <= to
+        })
+    }
+
+    fn teacher_free(&self, teacher_id: u32, from: u64, to: u64) -> bool {
+        !self
+            .occupancies
+            .values()
+            .any(|o| o.teacher_id == teacher_id && o.start_datetime >= from && o.end_datetime <= to)
+    }
+
+    fn class_free(&self, class_id: u32, from: u64, to: u64) -> bool {
+        !self.occupancies.values().any(|o| {
+            // Find an occupancy with a subject
+            let subject = match o.subject_id.and_then(|sid| self.subject_get(sid)) {
+                Some(subject) => subject,
+                None => return false,
+            };
+
+            subject.class_id == class_id && o.start_datetime >= from && o.end_datetime <= to
+        })
+    }
+
+    fn group_free(
+        &self,
+        class_id: u32,
+        subject_id: u32,
+        group_number: u32,
+        from: u64,
+        to: u64,
+    ) -> bool {
+        !self.occupancies.values().any(|o| {
+            // Find an occupancy with a subject
+            let subject = match o.subject_id.and_then(|sid| self.subject_get(sid)) {
+                Some(subject) => subject,
+                None => return false,
+            };
+
+            subject.id == subject_id
+                && subject.class_id == class_id
+                && o.start_datetime >= from
+                && o.end_datetime <= to
+                && o.group_number == Some(group_number)
+        })
+    }
+
+    fn last_occupancies_modifications(&self, user_id: u32) -> Vec<&Modification> {
+        self.modifications
+            .get(&user_id)
+            .map(|v| v.iter().collect())
+            .unwrap_or(Vec::new())
     }
 }
 
@@ -833,8 +984,73 @@ impl JSONDatabase {
             name: occupancy.name,
         };
 
+        // Initialize with teacher id
+        let mut affected_users: Vec<u32> = vec![occupancy.teacher_id];
+
+        // Add subject id
+        if let Some(subject_id) = occupancy.subject_id {
+            // Find each student in the subject
+            let ss: Vec<(u32, u32)> = self
+                .subjects_students
+                .values()
+                .filter(|ss| ss.subject_id == subject_id)
+                .map(|ss| {
+                    let student = self
+                        .user_get_student_by_id(ss.student_id)
+                        .expect("should be a valid reference");
+
+                    (ss.group_number, student.id)
+                })
+                .collect();
+
+            // If there is a group, then only choose those in that group
+            if let Some(group_number) = occupancy.group_number {
+                affected_users.extend(
+                    ss.iter()
+                        .filter(|(user_group_number, _)| user_group_number == &group_number)
+                        .map(|(_, uid)| uid),
+                );
+            } else {
+                affected_users.extend(ss.iter().map(|(_, uid)| uid));
+            }
+        }
+
+        let start = SystemTime::now();
+        let since_the_epoch = start
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards");
+
+        let subject = occupancy
+            .subject_id
+            .map(|id| self.subject_get(id).expect("should be a valid reference"));
+
+        let modification = Modification {
+            modification_type: ModificationType::Create,
+            modification_timestamp: since_the_epoch.as_secs(),
+            occupancy: ModificationOccupancy {
+                subject_id: occupancy.subject_id,
+                class_id: subject.map(|s| s.class_id),
+                occupancy_type: occupancy.occupancy_type.clone(),
+                occupancy_start: occupancy.start_datetime,
+                occupancy_end: occupancy.end_datetime,
+                previous_occupancy_start: occupancy.start_datetime,
+                previous_occupancy_end: occupancy.end_datetime,
+            },
+        };
+
+        self._add_modification(&affected_users[..], modification);
+
         self.occupancies.insert(self.next_occupancy_id, occupancy);
         self.next_occupancy_id += 1;
+    }
+
+    fn _add_modification(&mut self, affected_users: &[u32], modification: Modification) {
+        // TODO: keep to only last 25
+        for uid in affected_users {
+            let vec = self.modifications.entry(*uid).or_insert(Vec::new());
+            vec.insert(0, modification.clone());
+            vec.truncate(25);
+        }
     }
 }
 

@@ -27,12 +27,33 @@ impl FailureResponse {
 
 #[derive(Serialize)]
 pub enum ErrorCode {
-    NotFound,
     InvalidCredentials,
     InsufficientAuthorization,
     MalformedData,
     InvalidOldPassword,
+    PasswordTooSimple,
+    InvalidEmail,
+    InvalidPhoneNumber,
+    InvalidRank,
     InvalidID,
+    InvalidCapacity,
+    TeacherInCharge,
+    ClassroomUsed,
+    InvalidLevel,
+    ClassUsed,
+    StudentInClass,
+    SubjectUsed,
+    TeacherNotInCharge,
+    LastTeacherInSubject,
+    LastGroupInSubject,
+    ClassroomAlreadyOccupied,
+    ClassOrGroupAlreadyOccupied,
+    InvalidOccupancyType,
+    EndBeforeStart,
+    TeacherDoesNotTeach,
+    IllegalOccupancyType,
+    Unknown,
+    NotFound,
     IllegalRequest,
 }
 
@@ -79,9 +100,9 @@ where
 
 #[derive(Deserialize, Debug)]
 pub struct OccupanciesRequest {
-    pub start: u64,
-    pub end: u64,
-    pub occupancies_per_day: u32,
+    pub start: Option<u64>,
+    pub end: Option<u64>,
+    pub occupancies_per_day: Option<u32>,
 }
 
 #[derive(Serialize)]
@@ -108,7 +129,7 @@ impl<'a> OccupanciesListResponse<'a> {
     pub fn from_list(
         db: &'a LockedDb,
         occupancies_list: Vec<&'a Occupancy>,
-        occupancies_per_day: u32,
+        occupancies_per_day: Option<u32>,
     ) -> Self {
         let mut occupancies: HashMap<String, Vec<OccupanciesListElement>> = HashMap::new();
 
@@ -153,6 +174,8 @@ impl<'a> OccupanciesListResponse<'a> {
                 name: &occupancy.name,
             });
         }
+
+        let occupancies_per_day = occupancies_per_day.unwrap_or(0);
 
         // For each entry, keep only the top X results
         for days in occupancies.values_mut() {

@@ -1,9 +1,12 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 use super::globals::{ErrorCode, FailureResponse, SimpleSuccessResponse};
 use db::Database;
-use db::Db;
+use db::{
+    models::{Modification, ModificationOccupancy, ModificationType, OccupancyType},
+    Db,
+};
 use filters::{authed, delayed, with_db, Malformed, Unauthorized};
 
 pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
@@ -16,7 +19,16 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(delayed(db))
         .boxed();
 
-    put_profile_route
+    let last_occupancies_modifications_route =
+        warp::path!("api" / "profile" / "last-occupancies-modifications")
+            .and(warp::get())
+            .and(authed(db))
+            .and(with_db(db.clone()))
+            .and_then(last_occupancies_modifications)
+            .and(delayed(db))
+            .boxed();
+
+    put_profile_route.or(last_occupancies_modifications_route)
 }
 
 #[derive(Deserialize)]
@@ -92,4 +104,40 @@ async fn put_profile(
         warp::reply::json(&SimpleSuccessResponse::new()),
         status_code,
     ))
+}
+
+#[derive(Serialize)]
+struct LastOccupanciesModifications<'a> {
+    status: &'static str,
+    modifications: Vec<&'a Modification>,
+}
+
+// TODO: RETURN NAMES INSTEAD OF IDS
+
+async fn last_occupancies_modifications(
+    username: String,
+    db: Db,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let db = db.lock().await;
+    let user = db.user_get(&username).expect("should be a valid reference");
+    Ok(warp::reply::json(&LastOccupanciesModifications {
+        status: "success",
+        modifications: db.last_occupancies_modifications(user.id),
+    }))
+    /*Ok(warp::reply::json(&LastOccupanciesModifications {
+        status: "success",
+        modifications: vec![Modification {
+            modification_type: ModificationType::Create,
+            modification_timestamp: 1588830876,
+            occupancy: ModificationOccupancy {
+                subject_name: "TEST".to_string(),
+                class_name: "FAKE CLASS".to_string(),
+                occupancy_type: OccupancyType::CM,
+                occupancy_start: 1588830676,
+                occupancy_end: 1588830776,
+                previous_occupancy_start: 1588830676,
+                previous_occupancy_end: 1588830776,
+            },
+        }],
+    }))*/
 }

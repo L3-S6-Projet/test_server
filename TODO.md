@@ -1,7 +1,13 @@
+- CHECK AUTH
+- CHECK DELAYED
+
+
 - [x] POST   /session
 - [x] DELETE /session
 
 - [x] PUT    /profile
+- [ ] GET    /profile/last-occupancies-modifications
+- [ ] GET    /profile/feeds/ical
 
 - [x] GET    /teachers
 - [x] POST   /teachers
@@ -30,25 +36,23 @@
 - [x] DELETE /students
 - [x] GET    /students/{id}
 - [x] PUT    /students/{id}
-- [ ] GET    /students/{id}/occupancies
-- [ ] GET    /students/{id}/subjects
+- [x] GET    /students/{id}/occupancies
+- [x] GET    /students/{id}/subjects
 
 - [x] GET    /subjects
 - [x] POST   /subjects
 - [x] DELETE /subjects
 - [x] GET    /subjects/{id}
 - [x] PUT    /subjects/{id}
-- [ ] GET    /subjects/{id}/occupancies
+- [x] GET    /subjects/{id}/occupancies
 - [x] POST   /subjects/{id}/teachers
 - [x] DELETE /subjects/{id}/teachers
 - [x] POST   /subjects/{id}/groups
 - [x] DELETE /subjects/{id}/groups
+- [x] POST   /subjects/{id}/occupancies
+- [x] GET    /subjects/{id}/groups/{group_number}/occupancies
+- [x] POST   /subjects/{id}/groups/{group_number}/occupancies
 
 - [x] GET    /occupancies
-
-- [ ] GET    /profile/last-occupancies-modifications
-- [ ] POST   /subjects/{id}/occupancies
-- [ ] GET    /subjects/{id}/groups/{group_number}/occupancies
-- [ ] POST   /subjects/{id}/groups/{group_number}/occupancies
 - [ ] PUT    /occupancies/{id}
-- [ ] DELETE /occupancies/{id}
+- [x] DELETE /occupancies/{id}

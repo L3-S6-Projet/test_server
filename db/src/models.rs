@@ -47,12 +47,15 @@ pub struct TeacherInformations {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(rename_all = "lowercase")]
 pub enum Rank {
+    #[serde(rename = "MACO")]
     Lecturer,
+    #[serde(rename = "PROF")]
     Professor,
     PRAG,
     ATER,
+    PAST,
+    #[serde(rename = "MONI")]
     Monitor,
 }
 
@@ -114,13 +117,41 @@ pub struct Occupancy {
     pub name: String,
 }
 
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Deserialize, Serialize, Clone)]
 pub enum OccupancyType {
     CM,
     TD,
     TP,
+    #[serde(rename = "PROJ")]
     Projet,
+    #[serde(rename = "ADM")]
     Administration,
+    #[serde(rename = "EXT")]
     External,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct Modification {
+    pub modification_type: ModificationType,
+    pub modification_timestamp: u64,
+    pub occupancy: ModificationOccupancy,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct ModificationOccupancy {
+    pub subject_id: Option<u32>,
+    pub class_id: Option<u32>,
+    pub occupancy_type: OccupancyType,
+    pub occupancy_start: u64,
+    pub occupancy_end: u64,
+    pub previous_occupancy_start: u64,
+    pub previous_occupancy_end: u64,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum ModificationType {
+    Create,
+    Edit,
+    Delete,
 }

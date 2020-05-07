@@ -1,11 +1,19 @@
-use serde::Serialize;
+use log;
+use serde::{Deserialize, Serialize};
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 use super::{
-    globals::{PaginatedQueryableListRequest, SimpleSuccessResponse},
+    globals::{
+        OccupanciesListResponse, OccupanciesRequest, PaginatedQueryableListRequest,
+        SimpleSuccessResponse,
+    },
     ErrorCode, FailureResponse,
 };
-use db::{group_numbers, models::UserKind, Database, Db, NewSubject, SubjectUpdate};
+use db::{
+    group_numbers,
+    models::{OccupancyType, UserKind},
+    Database, Db, LockedDb, NewOccupancy, NewSubject, SubjectUpdate,
+};
 use filters::{authed_is_of_kind, delayed, with_db, PossibleUserKind};
 
 pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
@@ -86,6 +94,45 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .and(delayed(db))
         .boxed();
 
+    let occupancies_get_route = warp::path!("api" / "subjects" / u32 / "occupancies")
+        .and(warp::get())
+        .and(with_db(db.clone()))
+        .and(warp::query::<OccupanciesRequest>())
+        .and_then(occupancies_get)
+        .and(delayed(db))
+        .boxed();
+
+    // TODO: creation constraint (unique name?)
+    let occupancies_create_route = warp::path!("api" / "subjects" / u32 / "occupancies")
+        .and(warp::post())
+        .and(authed_is_of_kind(db, &[PossibleUserKind::Administrator]))
+        .and(with_db(db.clone()))
+        .and(warp::body::content_length_limit(1024 * 16).and(warp::body::json()))
+        .and_then(occupancies_create)
+        .and(delayed(db))
+        .boxed();
+
+    // TODO: creation constraint (unique name?)
+    let occupancies_groups_create_route =
+        warp::path!("api" / "subjects" / u32 / "groups" / u32 / "occupancies")
+            .and(warp::post())
+            .and(authed_is_of_kind(db, &[PossibleUserKind::Administrator]))
+            .and(with_db(db.clone()))
+            .and(warp::body::content_length_limit(1024 * 16).and(warp::body::json()))
+            .and_then(occupancies_groups_create)
+            .and(delayed(db))
+            .boxed();
+
+    let occupancies_group_get_route =
+        warp::path!("api" / "subjects" / u32 / "groups" / u32 / "occupancies")
+            .and(warp::get())
+            .and(authed_is_of_kind(db, &[PossibleUserKind::Administrator]))
+            .and(with_db(db.clone()))
+            .and(warp::query::<OccupanciesRequest>())
+            .and_then(occupancies_group_get)
+            .and(delayed(db))
+            .boxed();
+
     list_route
         .or(create_route)
         .or(delete_route)
@@ -95,6 +142,10 @@ pub fn routes(db: &Db) -> impl Filter<Extract = (impl Reply,), Error = Rejection
         .or(teacher_delete_route)
         .or(group_post_route)
         .or(group_delete_route)
+        .or(occupancies_get_route)
+        .or(occupancies_create_route)
+        .or(occupancies_groups_create_route)
+        .or(occupancies_group_get_route)
 }
 
 #[derive(Serialize)]
@@ -448,6 +499,296 @@ async fn group_delete(subject_id: u32, db: Db) -> Result<impl warp::Reply, warp:
 
     Ok(warp::reply::with_status(
         warp::reply::json(&SimpleSuccessResponse::new()),
+        StatusCode::OK,
+    ))
+}
+
+async fn occupancies_get(
+    subject_id: u32,
+    db: Db,
+    request: OccupanciesRequest,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let db = db.lock().await;
+
+    if db.subject_get(subject_id).is_none() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+            StatusCode::NOT_FOUND,
+        ));
+    }
+
+    let occupancies_list = db.occupancies_list(request.start, request.end);
+
+    let occupancies_list = occupancies_list
+        .into_iter()
+        .filter(|o| o.subject_id == Some(subject_id))
+        .collect();
+
+    let response =
+        OccupanciesListResponse::from_list(&db, occupancies_list, request.occupancies_per_day);
+
+    Ok(warp::reply::with_status(
+        warp::reply::json(&response),
+        StatusCode::OK,
+    ))
+}
+
+#[derive(Deserialize)]
+struct SubjectOccupancyCreationRequest {
+    pub classroom_id: Option<u32>,
+    pub teacher_id: u32,
+    pub start_datetime: u64,
+    pub end_datetime: u64,
+    pub occupancy_type: OccupancyType,
+    pub name: String,
+}
+
+async fn occupancies_create(
+    subject_id: u32,
+    _username: String,
+    db: Db,
+    request: SubjectOccupancyCreationRequest,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut db = db.lock().await;
+
+    if let Some(err_response) = validate_new_occupancy_base(&db, subject_id, &request) {
+        return Ok(err_response);
+    }
+
+    // Type constraints
+    match request.occupancy_type {
+        OccupancyType::TD | OccupancyType::TP => {
+            log::warn!("Trying to create an occupancy without a group, but the occupancy type is TD or TP. Specify a group to create those.");
+
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&FailureResponse::new(ErrorCode::IllegalOccupancyType)),
+                StatusCode::UNPROCESSABLE_ENTITY,
+            ));
+        }
+        OccupancyType::CM | OccupancyType::Projet => {
+            if request.classroom_id.is_none() {
+                log::warn!("Trying to create an occupancy, and the type is CM or Projet, but the classroom id is not defined.");
+
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+                    StatusCode::NOT_FOUND,
+                ));
+            }
+        }
+        OccupancyType::Administration => {}
+        OccupancyType::External => {}
+    }
+
+    // TODO: check request.occupancy_type parameters satisfied
+
+    let occupancy = NewOccupancy {
+        classroom_id: request.classroom_id,
+        group_number: None,
+        subject_id: Some(subject_id),
+        teacher_id: request.teacher_id,
+        start_datetime: request.start_datetime,
+        end_datetime: request.end_datetime,
+        occupancy_type: request.occupancy_type,
+        name: request.name,
+    };
+
+    db.occupancies_add(occupancy);
+
+    Ok(warp::reply::with_status(
+        warp::reply::json(&SimpleSuccessResponse::new()),
+        StatusCode::OK,
+    ))
+}
+
+async fn occupancies_groups_create(
+    subject_id: u32,
+    group_number: u32,
+    _username: String,
+    db: Db,
+    request: SubjectOccupancyCreationRequest,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let mut db = db.lock().await;
+
+    if let Some(err_response) = validate_new_occupancy_base(&db, subject_id, &request) {
+        return Ok(err_response);
+    }
+
+    // Type constraints
+    match request.occupancy_type {
+        OccupancyType::TD | OccupancyType::TP => {}
+        _ => {
+            log::warn!(
+                "Trying to create an occupancy with a group, but the type is neither TD nor TP."
+            );
+
+            return Ok(warp::reply::with_status(
+                warp::reply::json(&FailureResponse::new(ErrorCode::IllegalOccupancyType)),
+                StatusCode::UNPROCESSABLE_ENTITY,
+            ));
+        }
+    }
+
+    if request.classroom_id.is_none() {
+        log::warn!("Trying to create an occupancy, and the type is TD or TP, but the classroom id is not defined.");
+
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+            StatusCode::NOT_FOUND,
+        ));
+    }
+
+    let subject = db
+        .subject_get(subject_id)
+        .expect("should be a valid id, since its already been validated");
+
+    if group_number >= subject.group_count {
+        log::warn!("Trying to create an occupancy, but the provided group number is invalid.");
+
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+            StatusCode::NOT_FOUND,
+        ));
+    }
+
+    // TODO: check that group number is valid
+
+    let occupancy = NewOccupancy {
+        classroom_id: request.classroom_id,
+        group_number: Some(group_number),
+        subject_id: Some(subject_id),
+        teacher_id: request.teacher_id,
+        start_datetime: request.start_datetime,
+        end_datetime: request.end_datetime,
+        occupancy_type: request.occupancy_type,
+        name: request.name,
+    };
+
+    db.occupancies_add(occupancy);
+
+    Ok(warp::reply::with_status(
+        warp::reply::json(&SimpleSuccessResponse::new()),
+        StatusCode::OK,
+    ))
+}
+
+fn validate_new_occupancy_base(
+    db: &LockedDb,
+    subject_id: u32,
+    request: &SubjectOccupancyCreationRequest,
+) -> Option<warp::reply::WithStatus<warp::reply::Json>> {
+    // Check subject exists
+    if db.subject_get(subject_id).is_none() {
+        log::warn!("Trying to create an occupancy but the subject does not exist.");
+
+        return Some(warp::reply::with_status(
+            warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+            StatusCode::NOT_FOUND,
+        ));
+    }
+
+    // Check teacher exists and teaches that subject
+    match db.user_get_teacher_by_id(request.teacher_id) {
+        Some(_) => {
+            if !db.teacher_teaches(request.teacher_id, subject_id) {
+                log::warn!(
+                    "Trying to create an occupancy but the teacher does not teach that subject."
+                );
+                return Some(warp::reply::with_status(
+                    warp::reply::json(&FailureResponse::new(ErrorCode::TeacherDoesNotTeach)),
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                ));
+            }
+        }
+        None => {
+            log::warn!("Trying to create an occupancy but the teacher does not exist.");
+
+            return Some(warp::reply::with_status(
+                warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+                StatusCode::NOT_FOUND,
+            ));
+        }
+    }
+
+    // Check that classroom exists, and that is is free
+    if let Some(classroom_id) = request.classroom_id {
+        if db.classroom_get(classroom_id).is_none() {
+            log::warn!("Trying to create an occupancy but the classroom does not exist.");
+
+            return Some(warp::reply::with_status(
+                warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+                StatusCode::NOT_FOUND,
+            ));
+        }
+
+        if !db.classroom_free(classroom_id, request.start_datetime, request.end_datetime) {
+            log::warn!("Trying to create an occupancy but the classroom is not free.");
+
+            return Some(warp::reply::with_status(
+                warp::reply::json(&FailureResponse::new(ErrorCode::ClassroomAlreadyOccupied)),
+                StatusCode::UNPROCESSABLE_ENTITY,
+            ));
+        }
+    }
+
+    // Check end_datetime >= start_datetime
+    if request.end_datetime < request.start_datetime {
+        log::warn!(
+            "Trying to create an occupancy but the end_datetime is before the start_datetime."
+        );
+
+        return Some(warp::reply::with_status(
+            warp::reply::json(&FailureResponse::new(ErrorCode::EndBeforeStart)),
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ));
+    }
+
+    // Check that the teacher is free
+    if !db.teacher_free(
+        request.teacher_id,
+        request.start_datetime,
+        request.end_datetime,
+    ) {
+        log::warn!("Trying to create an occupancy, but the teacher is not free.");
+
+        return Some(warp::reply::with_status(
+            warp::reply::json(&FailureResponse::new(ErrorCode::Unknown)),
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ));
+    }
+
+    // TODO: Check that the class is free
+
+    None
+}
+
+async fn occupancies_group_get(
+    subject_id: u32,
+    group_number: u32,
+    _username: String,
+    db: Db,
+    request: OccupanciesRequest,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let db = db.lock().await;
+
+    if db.subject_get(subject_id).is_none() {
+        return Ok(warp::reply::with_status(
+            warp::reply::json(&FailureResponse::new(ErrorCode::InvalidID)),
+            StatusCode::NOT_FOUND,
+        ));
+    }
+
+    let occupancies_list = db.occupancies_list(request.start, request.end);
+
+    let occupancies_list = occupancies_list
+        .into_iter()
+        .filter(|o| o.subject_id == Some(subject_id) && o.group_number == Some(group_number))
+        .collect();
+
+    let response =
+        OccupanciesListResponse::from_list(&db, occupancies_list, request.occupancies_per_day);
+
+    Ok(warp::reply::with_status(
+        warp::reply::json(&response),
         StatusCode::OK,
     ))
 }

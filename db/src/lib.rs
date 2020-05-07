@@ -9,7 +9,9 @@ mod seed;
 mod utils;
 
 use json::JSONDatabase;
-use models::{Class, ClassLevel, Classroom, Occupancy, OccupancyType, Subject, User, UserKind};
+use models::{
+    Class, ClassLevel, Classroom, Modification, Occupancy, OccupancyType, Subject, User, UserKind,
+};
 
 pub const PAGE_SIZE: usize = 10;
 
@@ -121,7 +123,23 @@ pub trait Database {
 
     fn distribute_subject_groups(&mut self, subject_id: u32);
 
-    fn occupancies_list(&self, from: u64, to: u64) -> Vec<&Occupancy>;
+    fn occupancies_list(&self, from: Option<u64>, to: Option<u64>) -> Vec<&Occupancy>;
+    fn occupancies_remove(&mut self, occupancies: &[u32]) -> bool;
+    fn occupancies_add(&mut self, occupancy: NewOccupancy);
+
+    fn classroom_free(&self, classroom_id: u32, from: u64, to: u64) -> bool;
+    fn teacher_free(&self, teacher_id: u32, from: u64, to: u64) -> bool;
+    fn class_free(&self, class_id: u32, from: u64, to: u64) -> bool;
+    fn group_free(
+        &self,
+        class_id: u32,
+        subject_id: u32,
+        group_number: u32,
+        from: u64,
+        to: u64,
+    ) -> bool;
+
+    fn last_occupancies_modifications(&self, user_id: u32) -> Vec<&Modification>;
 }
 
 pub fn username_from_name(first_name: &str, last_name: &str) -> String {
