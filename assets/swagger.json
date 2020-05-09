@@ -69,14 +69,14 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Valid credentials",
             "schema": {
               "$ref": "#/definitions/SuccessfulLoginResponse"
             }
           },
-          "403": {
-            "description": "Invalid credentials",
+          "401": {
+            "description": "Invalid credentials (code=`InvalidCredentials`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -102,16 +102,6 @@
             "token": []
           }
         ],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "LogoutRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/LogoutRequest"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Valid token",
@@ -119,8 +109,8 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
-          "403": {
-            "description": "Invalid token",
+          "401": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -136,7 +126,7 @@
           "role-professor"
         ],
         "summary": "Updates the user model.",
-        "description": "Note : **only** users with the role `administrator` should be able to specifiy the properties `first_name` and `last_name`.\nOnly filled fields should be updated.",
+        "description": "Should be accessible by every user.",
         "security": [
           {
             "token": []
@@ -159,8 +149,20 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
-          "404": {
-            "description": "Invalid data",
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Invalid old_password (code=`InvalidOldPassword`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Password too simple (code=`PasswordTooSimple`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -187,6 +189,52 @@
             "schema": {
               "$ref": "#/definitions/ProfileRecentModifications"
             }
+          },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/profile/feeds/ical": {
+      "get": {
+        "tags": [
+          "role-student",
+          "role-professor"
+        ],
+        "summary": "Gets the url to the ICAL feed of the user calendar.",
+        "security": [
+          {
+            "token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "schema": {
+              "$ref": "#/definitions/ICALFeed"
+            }
+          },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
           }
         }
       }
@@ -197,7 +245,7 @@
           "teacher"
         ],
         "summary": "Returns a paginated list of all teachers.",
-        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 teachers should be returned per page. At least three characters should be provided for the search.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 teachers should be returned per page. If less than three characters are provided for the query, it will not be applied.\nWarning: the `email` and `phone_number` can be null.",
         "security": [
           {
             "token": []
@@ -223,6 +271,18 @@
             "schema": {
               "$ref": "#/definitions/TeacherListResponse"
             }
+          },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
           }
         }
       },
@@ -231,7 +291,7 @@
           "teacher"
         ],
         "summary": "Creates a new teacher.",
-        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\n`email` and `phone_number` can be null in the request.",
         "security": [
           {
             "token": []
@@ -248,14 +308,26 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Teacher created.",
             "schema": {
               "$ref": "#/definitions/AccountCreatedResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "422": {
-            "description": "Invalid data",
+            "description": "Invalid email (code=`InvalidEmail`)\nInvalid phone number (code=`InvalidPhoneNumber`)\nInvalid rank (code=`InvalidRank`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -290,8 +362,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID(s)",
+            "description": "Invalid ID(s) (code=`InvalidID`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "The teacher is still in charge of a subject (code=`TeacherInCharge`).",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -305,7 +395,7 @@
           "teacher"
         ],
         "summary": "Gets information for a teacher",
-        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nWarning: the `email` and `phone_number` can be null.",
         "security": [
           {
             "token": []
@@ -327,8 +417,20 @@
               "$ref": "#/definitions/TeacherResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID(s)",
+            "description": "Invalid ID(s) (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -340,7 +442,7 @@
           "teacher"
         ],
         "summary": "Updates information for a teacher.",
-        "description": "Note : only users with the role `administrator` should be able to access this route.\nOnly filled fields should be updated.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nOnly filled fields should be updated. To remove the `phone_number` or `email` fields, pass `null`.",
         "security": [
           {
             "token": []
@@ -370,14 +472,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
           },
           "422": {
-            "description": "Invalid data",
+            "description": "Invalid email (code=`InvalidEmail`)\nInvalid phone number (code=`InvalidPhoneNumber`)\nInvalid rank (code=`InvalidRank`)\nPassword too simple (code=`PasswordTooSimple`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -407,12 +521,25 @@
             "type": "integer"
           },
           {
-            "in": "body",
-            "name": "OccupanciesRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/OccupanciesRequest"
-            }
+            "in": "query",
+            "name": "start",
+            "description": "Start timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "description": "End timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "occupancies_per_day",
+            "type": "integer",
+            "description": "Pass 0 to return ALL the events.",
+            "required": false
           }
         ],
         "responses": {
@@ -422,8 +549,20 @@
               "$ref": "#/definitions/Occupancies"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -460,8 +599,20 @@
               "$ref": "#/definitions/TeacherSubjects"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -476,7 +627,7 @@
           "role-professor"
         ],
         "summary": "Returns a paginated list of all classrooms.",
-        "description": "Note : only users with the role `administrator`, or professors, should be able to access this route.\n10 classrooms should be returned per page. At least three characters should be provided for the search.",
+        "description": "Note : only users with the role `administrator`, or professors, should be able to access this route.\n10 classrooms should be returned per page. If less than three characters are provided for the query, it will not be applied.",
         "security": [
           {
             "token": []
@@ -501,6 +652,18 @@
             "description": "A list of all classrooms.",
             "schema": {
               "$ref": "#/definitions/ClassroomsList"
+            }
+          },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -527,14 +690,26 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Classroom created.",
             "schema": {
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "422": {
-            "description": "Invalid data",
+            "description": "Invalid capacity (code=`InvalidCapacity`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -569,8 +744,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID(s)",
+            "description": "Invalid ID(s) (code=`InvalidID`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Classroom is used in an occupancy (code=`ClassroomUsed`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -606,8 +799,20 @@
               "$ref": "#/definitions/ClassroomGetResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID(s)",
+            "description": "Invalid ID(s) (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -649,14 +854,20 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
-          "404": {
-            "description": "Invalid ID",
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
           },
-          "422": {
-            "description": "Invalid data",
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -685,12 +896,25 @@
             "type": "integer"
           },
           {
-            "in": "body",
-            "name": "OccupanciesRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/OccupanciesRequest"
-            }
+            "in": "query",
+            "name": "start",
+            "description": "Start timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "description": "End timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "occupancies_per_day",
+            "type": "integer",
+            "description": "Pass 0 to return ALL the events.",
+            "required": false
           }
         ],
         "responses": {
@@ -700,8 +924,20 @@
               "$ref": "#/definitions/Occupancies"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Classroom ID",
+            "description": "Not found (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -715,7 +951,7 @@
           "classes"
         ],
         "summary": "Returns a paginated list of all classes.",
-        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 classes should be returned per page. At least three characters should be provided for the search.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 classes should be returned per page. At least three characters should be provided for the search, or the results won't be filtered.",
         "security": [
           {
             "token": []
@@ -740,6 +976,18 @@
             "description": "A list of all classes.",
             "schema": {
               "$ref": "#/definitions/ClassesList"
+            }
+          },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -766,14 +1014,26 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Class created.",
             "schema": {
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "422": {
-            "description": "Invalid data",
+            "description": "Invalid level (code=`InvalidLevel`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -808,8 +1068,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID(s)",
+            "description": "Invalid ID(s) (code=`InvalidID`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Class is still used by a subject (code=`ClassUsed`)\nA student is still in this class (code=`StudentInClass`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -845,8 +1123,20 @@
               "$ref": "#/definitions/ClassResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID(s)",
+            "description": "Invalid ID(s) (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -877,7 +1167,7 @@
             "name": "ClassUpdateRequest",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/Class"
+              "$ref": "#/definitions/ClassUpdateRequest"
             }
           }
         ],
@@ -888,14 +1178,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
           },
           "422": {
-            "description": "Invalid data",
+            "description": "Invalid level (code=`InvalidLevel`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -924,12 +1226,25 @@
             "type": "integer"
           },
           {
-            "in": "body",
-            "name": "OccupanciesRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/OccupanciesRequest"
-            }
+            "in": "query",
+            "name": "start",
+            "description": "Start timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "description": "End timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "occupancies_per_day",
+            "type": "integer",
+            "description": "Pass 0 to return ALL the events.",
+            "required": false
           }
         ],
         "responses": {
@@ -939,8 +1254,20 @@
               "$ref": "#/definitions/Occupancies"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Class ID",
+            "description": "Invalid class ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -954,7 +1281,7 @@
           "students"
         ],
         "summary": "Returns a paginated list of all students.",
-        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 students should be returned per page. At least three characters should be provided for the search.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 students should be returned per page. At least three characters should be provided for the search, or the results won't be filtered.",
         "security": [
           {
             "token": []
@@ -980,6 +1307,18 @@
             "schema": {
               "$ref": "#/definitions/StudentListResponse"
             }
+          },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
           }
         }
       },
@@ -988,7 +1327,7 @@
           "students"
         ],
         "summary": "Creates a new student.",
-        "description": "Note : only users with the role `administrator` should be able to access this route.",
+        "description": "Note : only users with the role `administrator` should be able to access this route. This should trigger the re-organization of groups.",
         "security": [
           {
             "token": []
@@ -1005,14 +1344,26 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Student created.",
             "schema": {
               "$ref": "#/definitions/AccountCreatedResponse"
             }
           },
-          "422": {
-            "description": "Invalid data",
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid class id (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1047,8 +1398,20 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID(s)",
+            "description": "Invalid ID(s) (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1084,8 +1447,20 @@
               "$ref": "#/definitions/StudentResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID(s)",
+            "description": "Invalid ID(s) (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1097,7 +1472,7 @@
           "students"
         ],
         "summary": "Updates information for a student.",
-        "description": "Note : only users with the role `administrator` should be able to access this route.\nOnly filled fields should be updated.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\nOnly filled fields should be updated.\nThis should trigger the re-organization of groups.",
         "security": [
           {
             "token": []
@@ -1127,14 +1502,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)\nInvalid class id (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
           },
           "422": {
-            "description": "Invalid data",
+            "description": "Invalid password (code=`PasswordTooSimple`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1164,12 +1551,25 @@
             "type": "integer"
           },
           {
-            "in": "body",
-            "name": "OccupanciesRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/OccupanciesRequest"
-            }
+            "in": "query",
+            "name": "start",
+            "description": "Start timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "description": "End timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "occupancies_per_day",
+            "type": "integer",
+            "description": "Pass 0 to return ALL the events.",
+            "required": false
           }
         ],
         "responses": {
@@ -1179,8 +1579,20 @@
               "$ref": "#/definitions/Occupancies"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1217,8 +1629,20 @@
               "$ref": "#/definitions/StudentSubjects"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1232,7 +1656,7 @@
           "subjects"
         ],
         "summary": "Returns a paginated list of all subjects.",
-        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 subjects should be returned per page. At least three characters should be provided for the search.",
+        "description": "Note : only users with the role `administrator` should be able to access this route.\n10 subjects should be returned per page. At least three characters should be provided for the search, or the results won't be filtered.",
         "security": [
           {
             "token": []
@@ -1257,6 +1681,18 @@
             "description": "A list of all subjects.",
             "schema": {
               "$ref": "#/definitions/SubjectListResponse"
+            }
+          },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
             }
           }
         }
@@ -1283,14 +1719,26 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Subject created.",
             "schema": {
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
-          "422": {
-            "description": "Invalid data",
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "404": {
+            "description": "Invalid class id (code=`InvalidID`)\nInvalid teacher in charge id (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1325,8 +1773,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID(s)",
+            "description": "Invalid ID(s) (code=`InvalidID`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Subject used in an occupancy (code=`SubjectUsed`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1362,8 +1828,20 @@
               "$ref": "#/definitions/SubjectResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID(s)",
+            "description": "Invalid ID(s) (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1394,7 +1872,7 @@
             "name": "SubjectUpdateRequest",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/Subject"
+              "$ref": "#/definitions/SubjectUpdateRequest"
             }
           }
         ],
@@ -1405,14 +1883,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)\nInvalid teacher in charge id (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
           },
           "422": {
-            "description": "Invalid data",
+            "description": "The provided teacher in charge is not already a teacher of the subject (code=`TeacherNotInCharge`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1442,12 +1932,25 @@
             "type": "integer"
           },
           {
-            "in": "body",
-            "name": "OccupanciesRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/OccupanciesRequest"
-            }
+            "in": "query",
+            "name": "start",
+            "description": "Start timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "description": "End timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "occupancies_per_day",
+            "type": "integer",
+            "description": "Pass 0 to return ALL the events.",
+            "required": false
           }
         ],
         "responses": {
@@ -1457,8 +1960,20 @@
               "$ref": "#/definitions/Occupancies"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1494,20 +2009,32 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Data saved",
             "schema": {
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)\nInvalid classroom ID (code=`InvalidID`)\nInvalid teacher ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
           },
           "422": {
-            "description": "Invalid data",
+            "description": "Invalid occupancy type (code=`InvalidOccupancyType`)\nThe classroom is already occupied (code=`ClassroomAlreadyOccupied`)\nThe class (or group) is already occupied (code=`ClassOrGroupAlreadyOccupied`).\nEnd is before start (code=`EndBeforeStart`)\nThe teacher does not teach that subject (code=`TeacherDoesNotTeach`)\nThe teacher is already occupied (code=`TeacherAlreadyOccupied`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1545,14 +2072,26 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Teachers added.",
             "schema": {
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1594,8 +2133,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "Less than one teacher in charge (code=`LastTeacherInSubject`)\nThe teacher is in charge (code=`TeacherInCharge`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1625,14 +2182,26 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Group added.",
             "schema": {
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1666,8 +2235,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "422": {
+            "description": "This is the last group for this subject (code=`LastGroupInSubject`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1703,12 +2290,25 @@
             "type": "integer"
           },
           {
-            "in": "body",
-            "name": "OccupanciesRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/OccupanciesRequest"
-            }
+            "in": "query",
+            "name": "start",
+            "description": "Start timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "description": "End timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "occupancies_per_day",
+            "type": "integer",
+            "description": "Pass 0 to return ALL the events.",
+            "required": false
           }
         ],
         "responses": {
@@ -1718,8 +2318,20 @@
               "$ref": "#/definitions/Occupancies"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1762,20 +2374,32 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Data saved",
             "schema": {
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)\nInvalid classroom ID (code=`InvalidID`)\nInvalid teacher ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
           },
           "422": {
-            "description": "Invalid data",
+            "description": "Invalid occupancy type (code=`InvalidOccupancyType`)\nThe classroom is already occupied (code=`ClassroomAlreadyOccupied`)\nThe class (or group) is already occupied (code=`ClassOrGroupAlreadyOccupied`).\nEnd is before start (code=`EndBeforeStart`)\nThe teacher does not teach that subject (code=`TeacherDoesNotTeach`)\nThe teacher is already occupied (code=`TeacherAlreadyOccupied`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1797,12 +2421,25 @@
         ],
         "parameters": [
           {
-            "in": "body",
-            "name": "OccupanciesRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/OccupanciesRequest"
-            }
+            "in": "query",
+            "name": "start",
+            "description": "Start timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "description": "End timestamp of the occupancies",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "occupancies_per_day",
+            "type": "integer",
+            "description": "Pass 0 to return ALL the events.",
+            "required": false
           }
         ],
         "responses": {
@@ -1812,8 +2449,20 @@
               "$ref": "#/definitions/Occupancies"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1824,10 +2473,11 @@
     "/occupancies/{id}": {
       "put": {
         "tags": [
-          "role-professor"
+          "role-professor",
+          "occupancies"
         ],
         "summary": "Update an occupancy for a given subject.",
-        "description": "Note : only professors who are a teacher of the subject should be able to access this route.\nOnly classrooms that are free should be accepted. Only classes that are not (any of their groups too) in any classes at the specified time should be accepted. Only filled fields should be updated.You can't change the assigned group, or the assigned type, or the assigned subject, or the assigned teacher.",
+        "description": "Note : only administrators and professors who are a teacher of the subject should be able to access this route.\nOnly classrooms that are free should be accepted. Only classes that are not (any of their groups too) in any classes at the specified time should be accepted. Only filled fields should be updated.You can't change the assigned group, or the assigned type, or the assigned subject, or the assigned teacher.",
         "security": [
           {
             "token": []
@@ -1857,14 +2507,26 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)\nInvalid classroom ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
           },
           "422": {
-            "description": "Invalid data",
+            "description": "The classroom is already occupied (code=`ClassroomAlreadyOccupied`)\nThe class (or group) is already occupied (code=`ClassOrGroupAlreadyOccupied`).\nEnd is before start (code=`EndBeforeStart`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1873,10 +2535,11 @@
       },
       "delete": {
         "tags": [
+          "occupancies",
           "role-professor"
         ],
         "summary": "Removes occupancies from a subject using their IDs.",
-        "description": "Note : only professors who are a teacher of the subject should be able to access this route.",
+        "description": "Note : only administrators and professors who are a teacher of the subject should be able to access this route.",
         "security": [
           {
             "token": []
@@ -1889,14 +2552,6 @@
             "description": "Occupancy ID",
             "required": true,
             "type": "integer"
-          },
-          {
-            "in": "body",
-            "name": "IDRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/IDRequest"
-            }
           }
         ],
         "responses": {
@@ -1906,8 +2561,20 @@
               "$ref": "#/definitions/SimpleSuccessResponse"
             }
           },
+          "401": {
+            "description": "Invalid token (code=`InvalidCredentials`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
+          "403": {
+            "description": "Insufficient authorization (code=`InsufficientAuthorization`)",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          },
           "404": {
-            "description": "Invalid ID",
+            "description": "Invalid ID (code=`InvalidID`)",
             "schema": {
               "$ref": "#/definitions/ErrorResponse"
             }
@@ -1927,30 +2594,31 @@
     "Rank": {
       "type": "string",
       "enum": [
-        "lecturer",
-        "professor",
-        "prag",
-        "ater",
-        "monitor"
+        "MACO",
+        "PROF",
+        "PRAG",
+        "ATER",
+        "PAST",
+        "MONI"
       ]
     },
     "Role": {
       "type": "string",
       "enum": [
-        "administrator",
-        "teacher",
-        "student"
+        "ADM",
+        "TEA",
+        "STU"
       ]
     },
     "OccupancyType": {
       "type": "string",
       "enum": [
-        "cm",
-        "td",
-        "tp",
-        "projet",
-        "administration",
-        "external"
+        "CM",
+        "TD",
+        "TP",
+        "PROJ",
+        "ADM",
+        "EXT"
       ]
     },
     "Level": {
@@ -1980,7 +2648,30 @@
             "InvalidCredentials",
             "InsufficientAuthorization",
             "MalformedData",
-            "InvalidOldPassword"
+            "InvalidOldPassword",
+            "PasswordTooSimple",
+            "InvalidEmail",
+            "InvalidPhoneNumber",
+            "InvalidRank",
+            "InvalidID",
+            "InvalidCapacity",
+            "TeacherInCharge",
+            "ClassroomUsed",
+            "InvalidLevel",
+            "ClassUsed",
+            "StudentInClass",
+            "SubjectUsed",
+            "TeacherNotInCharge",
+            "LastTeacherInSubject",
+            "LastGroupInSubject",
+            "ClassroomAlreadyOccupied",
+            "ClassOrGroupAlreadyOccupied",
+            "InvalidOccupancyType",
+            "EndBeforeStart",
+            "TeacherDoesNotTeach",
+            "IllegalOccupancyType",
+            "TeacherAlreadyOccupied",
+            "Unknown"
           ]
         }
       }
@@ -2006,94 +2697,90 @@
     },
     "Occupancies": {
       "type": "object",
+      "description": "TODO",
+      "required": [
+        "status",
+        "days"
+      ],
       "properties": {
         "status": {
           "type": "string",
           "example": "success"
         },
-        "occupancies": {
-          "type": "object",
-          "properties": {
-            "01-05-2020": {
-              "type": "object",
-              "required": [
-                "id",
-                "classroom",
-                "group_name",
-                "subject_name",
-                "teacher_name",
-                "start",
-                "end",
-                "occupancy_type",
-                "name"
-              ],
-              "properties": {
-                "id": {
-                  "type": "integer",
-                  "example": 0
-                },
-                "classroom_name": {
-                  "type": "string",
-                  "example": "B.001"
-                },
-                "group_name": {
-                  "type": "string",
-                  "example": "Groupe 1"
-                },
-                "subject_name": {
-                  "type": "string",
-                  "example": "Algorithmique"
-                },
-                "teacher_name": {
-                  "type": "string",
-                  "example": "mylan chevalier"
-                },
-                "start": {
-                  "type": "integer",
-                  "example": 1587776227
-                },
-                "end": {
-                  "type": "integer",
-                  "example": 1587779827
-                },
-                "occupancy_type": {
-                  "$ref": "#/definitions/OccupancyType"
-                },
-                "class_name": {
-                  "type": "string",
-                  "example": "L3 Informatique"
-                },
-                "name": {
-                  "type": "string",
-                  "example": "Algorithmique CM Groupe 1"
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "date",
+              "occupancies"
+            ],
+            "properties": {
+              "date": {
+                "type": "string",
+                "example": "01-05-2020"
+              },
+              "occupancies": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "classroom_name",
+                    "group_name",
+                    "subject_name",
+                    "teacher_name",
+                    "start",
+                    "end",
+                    "occupancy_type",
+                    "class_name",
+                    "name"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "classroom_name": {
+                      "type": "string",
+                      "example": "B.001"
+                    },
+                    "group_name": {
+                      "type": "string",
+                      "example": "Groupe 1"
+                    },
+                    "subject_name": {
+                      "type": "string",
+                      "example": "Algorithmique"
+                    },
+                    "teacher_name": {
+                      "type": "string",
+                      "example": "mylan chevalier"
+                    },
+                    "start": {
+                      "type": "integer",
+                      "example": 1587776227
+                    },
+                    "end": {
+                      "type": "integer",
+                      "example": 1587779827
+                    },
+                    "occupancy_type": {
+                      "$ref": "#/definitions/OccupancyType"
+                    },
+                    "class_name": {
+                      "type": "string",
+                      "example": "L3 Informatique"
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "Algorithmique CM Groupe 1"
+                    }
+                  }
                 }
               }
             }
           }
-        }
-      }
-    },
-    "OccupanciesRequest": {
-      "type": "object",
-      "required": [
-        "type",
-        "start",
-        "end",
-        "occupancies_per_day"
-      ],
-      "properties": {
-        "start": {
-          "type": "integer",
-          "example": 1587776227
-        },
-        "end": {
-          "type": "integer",
-          "example": 1587779827
-        },
-        "occupancies_per_day": {
-          "type": "integer",
-          "example": 0,
-          "description": "Pass 0 to return ALL the events."
         }
       }
     },
@@ -2153,6 +2840,12 @@
         },
         "user": {
           "type": "object",
+          "required": [
+            "id",
+            "first_name",
+            "last_name",
+            "kind"
+          ],
           "properties": {
             "id": {
               "type": "integer",
@@ -2171,20 +2864,12 @@
         }
       }
     },
-    "LogoutRequest": {
-      "type": "object",
-      "required": [
-        "token"
-      ],
-      "properties": {
-        "token": {
-          "type": "string",
-          "example": "..."
-        }
-      }
-    },
     "ProfileUpdateRequest": {
       "type": "object",
+      "required": [
+        "old_password",
+        "password"
+      ],
       "properties": {
         "old_password": {
           "type": "string",
@@ -2193,19 +2878,15 @@
         "password": {
           "type": "string",
           "example": "54321"
-        },
-        "first_name": {
-          "type": "string",
-          "example": "new first name"
-        },
-        "last_name": {
-          "type": "string",
-          "example": "new last name"
         }
       }
     },
     "ProfileRecentModifications": {
       "type": "object",
+      "required": [
+        "status",
+        "modifications"
+      ],
       "properties": {
         "status": {
           "type": "string",
@@ -2215,13 +2896,18 @@
           "type": "array",
           "items": {
             "type": "object",
+            "required": [
+              "modification_type",
+              "modification_timestamp",
+              "occupancy"
+            ],
             "properties": {
               "modification_type": {
                 "type": "string",
                 "enum": [
-                  "creation",
-                  "edition",
-                  "deletion"
+                  "CREATE",
+                  "EDIT",
+                  "DELETE"
                 ]
               },
               "modification_timestamp": {
@@ -2230,6 +2916,15 @@
               },
               "occupancy": {
                 "type": "object",
+                "required": [
+                  "subject_name",
+                  "class_name",
+                  "occupancy_type",
+                  "occupancy_start",
+                  "occupancy_end",
+                  "previous_occupancy_start",
+                  "previous_occupancy_end"
+                ],
                 "properties": {
                   "subject_name": {
                     "type": "string",
@@ -2325,7 +3020,10 @@
       "type": "object",
       "required": [
         "first_name",
-        "last_name"
+        "last_name",
+        "email",
+        "phone_number",
+        "rank"
       ],
       "properties": {
         "first_name": {
@@ -2479,6 +3177,10 @@
     },
     "TeacherSubjects": {
       "type": "object",
+      "required": [
+        "status",
+        "subjects"
+      ],
       "properties": {
         "status": {
           "type": "string",
@@ -2488,6 +3190,13 @@
           "type": "array",
           "items": {
             "type": "object",
+            "required": [
+              "id",
+              "name",
+              "class_name",
+              "teachers",
+              "groups"
+            ],
             "properties": {
               "id": {
                 "type": "integer",
@@ -2505,6 +3214,13 @@
                 "type": "array",
                 "items": {
                   "type": "object",
+                  "required": [
+                    "first_name",
+                    "last_name",
+                    "in_charge",
+                    "email",
+                    "phone_number"
+                  ],
                   "properties": {
                     "first_name": {
                       "type": "string",
@@ -2533,6 +3249,11 @@
                 "type": "array",
                 "items": {
                   "type": "object",
+                  "required": [
+                    "number",
+                    "name",
+                    "count"
+                  ],
                   "properties": {
                     "number": {
                       "type": "integer",
@@ -2556,6 +3277,11 @@
     },
     "ClassroomsList": {
       "type": "object",
+      "required": [
+        "status",
+        "total",
+        "classrooms"
+      ],
       "properties": {
         "status": {
           "type": "string",
@@ -2642,6 +3368,11 @@
     },
     "ClassesList": {
       "type": "object",
+      "required": [
+        "status",
+        "total",
+        "classes"
+      ],
       "properties": {
         "status": {
           "type": "string",
@@ -2661,6 +3392,11 @@
     },
     "ClassWithId": {
       "type": "object",
+      "required": [
+        "id",
+        "name",
+        "level"
+      ],
       "properties": {
         "id": {
           "type": "integer",
@@ -2677,6 +3413,10 @@
     },
     "Class": {
       "type": "object",
+      "required": [
+        "name",
+        "level"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -2689,13 +3429,34 @@
     },
     "ClassResponse": {
       "type": "object",
+      "required": [
+        "status",
+        "class",
+        "total_service"
+      ],
       "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
         "class": {
           "$ref": "#/definitions/Class"
         },
         "total_service": {
           "type": "integer",
           "example": 56
+        }
+      }
+    },
+    "ClassUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "L3 Informatique"
+        },
+        "level": {
+          "$ref": "#/definitions/Level"
         }
       }
     },
@@ -2854,6 +3615,10 @@
     },
     "StudentSubjects": {
       "type": "object",
+      "required": [
+        "status",
+        "subjects"
+      ],
       "properties": {
         "status": {
           "type": "string",
@@ -2863,6 +3628,12 @@
           "type": "array",
           "items": {
             "type": "object",
+            "required": [
+              "name",
+              "class_name",
+              "teachers",
+              "groups"
+            ],
             "properties": {
               "name": {
                 "type": "string",
@@ -2876,6 +3647,13 @@
                 "type": "array",
                 "items": {
                   "type": "object",
+                  "required": [
+                    "first_name",
+                    "last_name",
+                    "in_charge",
+                    "email",
+                    "phone_number"
+                  ],
                   "properties": {
                     "first_name": {
                       "type": "string",
@@ -2904,6 +3682,11 @@
                 "type": "array",
                 "items": {
                   "type": "object",
+                  "required": [
+                    "name",
+                    "count",
+                    "is_student_group"
+                  ],
                   "properties": {
                     "name": {
                       "type": "string",
@@ -2947,10 +3730,15 @@
           "items": {
             "type": "object",
             "required": [
+              "id",
               "class_name",
               "name"
             ],
             "properties": {
+              "id": {
+                "type": "integer",
+                "example": 0
+              },
               "class_name": {
                 "type": "string",
                 "example": "L3 Informatique"
@@ -2979,6 +3767,19 @@
         "class_id": {
           "type": "integer",
           "example": 0
+        },
+        "teacher_in_charge_id": {
+          "type": "integer",
+          "example": 0
+        }
+      }
+    },
+    "SubjectUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "example": "PPPE"
         },
         "teacher_in_charge_id": {
           "type": "integer",
@@ -3021,6 +3822,12 @@
               "type": "array",
               "items": {
                 "type": "object",
+                "required": [
+                  "id",
+                  "first_name",
+                  "last_name",
+                  "in_charge"
+                ],
                 "properties": {
                   "id": {
                     "type": "integer",
@@ -3045,6 +3852,11 @@
               "type": "array",
               "items": {
                 "type": "object",
+                "required": [
+                  "id",
+                  "name",
+                  "count"
+                ],
                 "properties": {
                   "id": {
                     "type": "integer",
@@ -3067,10 +3879,18 @@
     },
     "OccupanciesCreationRequest": {
       "type": "object",
+      "required": [
+        "classroom_id",
+        "start",
+        "end",
+        "name",
+        "occupancy_type",
+        "teacher_id"
+      ],
       "properties": {
         "classroom_id": {
-          "type": "string",
-          "example": "nullable"
+          "type": "integer",
+          "example": 0
         },
         "start": {
           "type": "integer",
@@ -3086,6 +3906,10 @@
         },
         "occupancy_type": {
           "$ref": "#/definitions/OccupancyType"
+        },
+        "teacher_id": {
+          "type": "integer",
+          "example": 0
         }
       }
     },
@@ -3107,6 +3931,23 @@
         "name": {
           "type": "string",
           "example": "nom du cours"
+        }
+      }
+    },
+    "ICALFeed": {
+      "type": "object",
+      "required": [
+        "status",
+        "url"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "example": "success"
+        },
+        "url": {
+          "type": "string",
+          "example": "http://localhost:3030/api/feeds/ical/$TOKEN"
         }
       }
     }
