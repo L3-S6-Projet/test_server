@@ -1,6 +1,6 @@
 [package]
 name = "dummy_scolendar_api"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Nicolas Bourras <dev@nicolasb.fr>"]
 edition = "2018"
 
